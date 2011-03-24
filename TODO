@@ -1,0 +1,13 @@
+TODO
+====
+
+General
+-------
+
+* Choose English or German for Comments, Commit Messages etc.
+* Discuss Architecture and Wanted Functionality (also UI)
+
+Features
+--------
+
+* Facilitate Testability with HUnit?
