@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+<xsd:element name="reservations">
+	<xsd:complexType>
+		<xsd:sequence>
+
+			<!-- every new reservation gets a unique number, so we need to keep track which numbers already have been used -->
+			<xsd:element name="issued_reservations" type="xsd:integer"/>
+
+			<xsd:choice minOccurs="0" maxOccurs="unbounded">
+				<xsd:element name="individual_reservation">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="reservation_number" type="xsd:integer"/>
+							<!--
+							for the sake of simplicity, we assume that train stations fulfil the following criteria:
+								1. each train station has a unique number, starting with 1 for the first station
+								2. the stations are only connected linearly
+								3. the numbers are incremented by 1 for neighboring stations (station 1 connected to station 2, station 2 connected to station 3)
+								4. all trains start at the first station, stop in all stations, and end in the finishing station
+								5. trains drive only in ascending order, ie. in one direction
+							
+							So all trains pull out the route [1..endStation]
+							-->
+							<xsd:element name="from" type="xsd:integer"/>
+							<xsd:element name="to" type="xsd:integer"/>
+							<xsd:element name="train" type="xsd:integer"/>
+							<xsd:element name="car" type="xsd:integer"/>
+							<xsd:element name="seat" type="xsd:integer"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+
+				<xsd:element name="group_reservation">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="reservation_number" type="xsd:integer"/>
+							<xsd:element name="from" type="xsd:integer"/>
+							<xsd:element name="to" type="xsd:integer"/>
+							<xsd:element name="train" type="xsd:integer"/>
+							<xsd:element name="car" type="xsd:integer"/>
+							<xsd:element name="count" type="xsd:integer"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+			</xsd:choice>
+			
+		</xsd:sequence>
+	</xsd:complexType>
+</xsd:element>
+
+</xsd:schema>
