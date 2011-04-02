@@ -4,8 +4,16 @@ TODO
 General
 -------
 
-* Choose English or German for Comments, Commit Messages etc.
-* Discuss Architecture and Wanted Functionality (also UI)
+* get going with monads
+    * how to combine IO and Maybe monad?
+	* how to combine putStr with some non-output return?
+* read / write xml data <-> zipper
+* decide how to represent stations, trains, cars, seats within program
+    * facilitate changeability?
+        * provide second xml for configuring trains?
+* assure that there is enough free place before issuing reservation
+* query existing reservations - yay
+
 
 Features
 --------
