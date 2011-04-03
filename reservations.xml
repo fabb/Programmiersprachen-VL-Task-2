@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<reservations xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="reservations.xsd">
+  <issued_reservations>5</issued_reservations>
+  <group_reservation>
+    <reservation_number>10</reservation_number>
+    <from>2</from>
+    <to>3</to>
+    <train>4</train>
+    <car>5</car>
+    <count>6</count>
+  </group_reservation>
+  <group_reservation>
+    <reservation_number>2</reservation_number>
+    <from>3</from>
+    <to>4</to>
+    <train>5</train>
+    <car>6</car>
+    <count>7</count>
+  </group_reservation>
+  <individual_reservation>
+    <reservation_number>3</reservation_number>
+    <from>4</from>
+    <to>5</to>
+    <train>6</train>
+    <car>7</car>
+    <seat>8</seat>
+  </individual_reservation>
+  <individual_reservation>
+    <reservation_number>4</reservation_number>
+    <from>5</from>
+    <to>6</to>
+    <train>7</train>
+    <car>8</car>
+    <seat>9</seat>
+  </individual_reservation>
+  <group_reservation>
+    <reservation_number>20</reservation_number>
+    <from>3</from>
+    <to>4</to>
+    <train>5</train>
+    <car>6</car>
+    <count>7</count>
+  </group_reservation>
+</reservations>
+
