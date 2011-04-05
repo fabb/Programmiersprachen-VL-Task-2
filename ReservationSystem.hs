@@ -2,13 +2,11 @@
 
 {- TODO
 
-	how can I both use putStrLn in a function and return some other stuff?
 	zipper is in the IO monad in the mainloop, but for calculations i want to use the Maybe monad - how can i combine those?
 
 -}
 
-module Main
-where
+module ReservationSystem where
 
 {---------- Imports ----------}
 import Data.List (break)
