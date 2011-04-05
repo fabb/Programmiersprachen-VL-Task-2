@@ -11,8 +11,12 @@ module Main
 where
 
 {---------- Imports ----------}
-import Data.List (break) 
+import Data.List (break)
+import Data.Maybe
+import Data.Char
+--import IO
 import Text.XML.HXT.Core
+import Text.XML.HXT.RelaxNG
 --import Text.XML.HXT.Curl -- use libcurl for HTTP access, only necessary when reading http://...
  
 import System.Environment
@@ -20,6 +24,8 @@ import System.Environment
 
 {---------- Globals ----------}
 xmlFilename = "reservations.xml" :: String
+--Relax NG Schema
+rngFilename = "reservations.rng" :: String
 
 
 {---------- Types ----------}
@@ -75,7 +81,7 @@ main = do
 
 
 --reads in user input and processes wanted changes on reservations
---returns the changed data structure when finished TODO does it?
+--returns the changed data structure when finished
 mainloop :: ApplicationData -> String -> IO ApplicationData
 mainloop d@(icount, zipper) xmlFilename = do
 		
@@ -97,7 +103,7 @@ mainloop d@(icount, zipper) xmlFilename = do
 					
 			"y" -> do -- Delete reservation, needs as input RESERVATIONNUMBER
 					printDummy choice
-					changedZipper <- return $ removeFirst zipper --TODO test
+					changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
 					return (icount, changedZipper)
 		
 			"r" -> do -- Show train stations, trains, train cars, and seats, needs no input
@@ -185,21 +191,70 @@ writeData (icount, zipper) xmlFilename = do
 
 
 --loads data from the given xml and prints status
---TODO return zipper
 loadData :: String -> IO ApplicationData
 loadData xmlFilename = do
 	putStrLn $ "Trying to load reservation data from " ++ xmlFilename
-	--readDocument [withValidate no] xmlFilename --beware if it not yet exists
-	--if xml does not yet exist, say so and initialize zipper with default values (issued reservations number = 0)
-	r@[(c, z)] <- runX
-			( xunpickleDocument xpReservationData
+
+	v <- runX
+			( -- errorMsgCollect --do not output errors to stderr but collect them
+			  -- >>>
+			  readDocument
 				[ withRemoveWS yes   -- remove redundant whitespace
-				, withValidate no    -- don't validate source
+				, withValidate no    -- don't validate source by DTD
 				] xmlFilename
-            )
-	if null r
-		then return (0, makeRZipper []) --FIXME pattern match failure at [(c, z)] and xunpickleDocument will return a fatal error
-		else return (c, makeRZipper z)
+			  >>>
+			  -- validate source by Relax NG
+			  validateDocumentWithRelaxSchema [] rngFilename
+			  -- >>>
+			  -- getErrorMessages --returns collected error messages
+			  >>>
+			  getErrStatus
+			)
+	--putStrLn $ show v
+	
+	--TODO flush stderr and stdout before further output, otherwise an error message on stderr will be interspersed with stdout output
+	--does not work
+	--hFlush stderr
+	--hFlush stdout
+	
+	--using both readDocument and xunpickleDocument would output "file not found" twice, so xunpickleDocument is only executed when validated
+	r <- case v of
+		--severity [0]=[c_ok]
+		[0] -> do
+			r <- runX
+				( xunpickleDocument xpReservationData
+					[ withRemoveWS yes   -- remove redundant whitespace
+					, withValidate no    -- don't validate source by DTD
+					] xmlFilename
+				)
+			--putStrLn $ show r
+			return r
+		
+		--severity: [1]=[c_warn], [2]=[c_err], [3]=[c_fatal], else=something_really_really_bad_happened
+		_ -> return [] --maybe not the most elegant way, but an error while unpickling also results in []
+	
+	case r of
+		[] -> do
+			--xunpickleDocument will print a fatal error *anywhere in the output* when file does not exist -> can that be catched?
+			--if xml does not yet exist (or another error has occurred), say so and initialize zipper with default values (issued reservations number = 0)
+			putStrLn $ "Could not read database file " ++ xmlFilename
+			putStrLn $ "Do you want to load an empty data structure?"
+			putStrLn $ "Warning: an existing file " ++ xmlFilename ++ " will be overwritten upon exit then."
+			putStrLn $ "Sure? Then type 'YES'."
+			
+			choice <- getLine
+			
+			case (map toLower choice) == "yes" of --whitespaces are not ignored yet
+				True -> return (0, makeRZipper [])
+				False -> error "Voted for no, aborting."
+		
+		[(c, z)] -> do
+			return (c, makeRZipper z)
+		
+		_ -> do
+			--putStrLn $ "Unknown error while reading database file " ++ xmlFilename ++ ", loading empty data structure"
+			--return (0, makeRZipper [])
+			error $ "Unknown error while reading database file " ++ xmlFilename
 
 {- test
 testReadXml xmlFilename = runX
@@ -226,8 +281,9 @@ testReadWriteXml xmlFilename = runX
 --start point for xml<->data transformations
 xpReservationData :: PU XMLData
 xpReservationData = xpElem "reservations" $ --xml root element
-		xpAddFixedAttr "xmlns:xsi" "http://www.w3.org/2001/XMLSchema-instance" $
-		xpAddFixedAttr "xsi:noNamespaceSchemaLocation" "reservations.xsd" $
+		--xpAddFixedAttr "xmlns:xsi" "http://www.w3.org/2001/XMLSchema-instance" $
+		--with Relax NG, there is no standard way of referencing the .rng from the .xml
+		--xpAddFixedAttr "xsi:noNamespaceSchemaLocation" "reservations.xsd" $
 		xpPair
 			xpIssuedReservations
 			xpReservations
@@ -342,11 +398,3 @@ reservationDeleteCurrent ([], _) = Nothing
 reservationDelete :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
 reservationDelete resnum z = reservationTo resnum z >>= reservationDeleteCurrent
 
---TODO test for removing the current item (=first if zipper not forwarded)
-removeFirst :: ReservationZipper -> ReservationZipper
-removeFirst zipper@(i,c) = (tail i, c)
-{-
-removeFirst :: ReservationZipper -> Maybe ReservationZipper
-removeFirst zipper@(i:is,c) = Just (is, c)
-removeFirst ([],c) = Nothing
--}

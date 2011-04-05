@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<rng:grammar xmlns:rng="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+
+	<rng:start combine="choice">
+		<rng:ref name="reservations"/>
+	</rng:start>
+	
+	<rng:define name="reservations">
+		<rng:element name="reservations">
+
+			<!-- every new reservation gets a unique number, so we need to keep track which numbers already have been used -->
+			<rng:element name="issued_reservations">
+				<rng:data type="integer"/>
+			</rng:element>
+
+			<rng:zeroOrMore>
+				<rng:choice>
+					<rng:element name="individual_reservation">
+
+						<rng:element name="reservation_number">
+							<rng:data type="integer"/>
+						</rng:element>
+						<!--
+							for the sake of simplicity, we assume that train stations fulfil the following criteria:
+								1. each train station has a unique number, starting with 1 for the first station
+								2. the stations are only connected linearly
+								3. the numbers are incremented by 1 for neighboring stations (station 1 connected to station 2, station 2 connected to station 3)
+								4. all trains start at the first station, stop in all stations, and end in the finishing station
+								5. trains drive only in ascending order, ie. in one direction
+							
+							So all trains pull out the route [1..endStation]
+							-->
+						<rng:element name="from">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="to">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="train">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="car">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="seat">
+							<rng:data type="integer"/>
+						</rng:element>
+
+					</rng:element>
+
+					<rng:element name="group_reservation">
+
+						<rng:element name="reservation_number">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="from">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="to">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="train">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="car">
+							<rng:data type="integer"/>
+						</rng:element>
+						<rng:element name="count">
+							<rng:data type="integer"/>
+						</rng:element>
+
+					</rng:element>
+				</rng:choice>
+			</rng:zeroOrMore>
+
+		</rng:element>
+	</rng:define>
+
+</rng:grammar>
