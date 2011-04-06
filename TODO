@@ -4,14 +4,15 @@ TODO
 General
 -------
 
-* get going with monads
-    * how to combine IO and Maybe monad? monads are packable into each other
-	* how to combine putStr with some non-output return? - no problem as long as non-output return is IO monad
+* should I rename the module ReservationSystem to Main?
+    * then I would need to rename the file as well, Main.hs looks ugly
 * decide how to represent stations, trains, cars, seats within program
     * set up station + train configurations
     * facilitate changeability?
         * provide second xml for configuring trains?
 * correct error handling when reading non-existant xml
+    * output on stderr and stdout sometimes is interspersed in output terminal
+* ui for inputting data for each menu option
 * assure that there is enough free place before issuing reservation
 * query existing reservations - yay
 
@@ -20,3 +21,4 @@ Features
 --------
 
 * Facilitate Testability with HUnit?
+    * HUnit is ready (testmain) - but not sure yet how to test monadic functions where suppressing of output from putStr would be desirable

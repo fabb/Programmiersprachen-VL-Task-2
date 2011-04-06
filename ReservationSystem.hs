@@ -1,11 +1,5 @@
 --Fabian Ehrentraud, Bernhard Urban, 2011
 
-{- TODO
-
-	zipper is in the IO monad in the mainloop, but for calculations i want to use the Maybe monad - how can i combine those?
-
--}
-
 module ReservationSystem where
 
 {---------- Imports ----------}
@@ -101,7 +95,8 @@ mainloop d@(icount, zipper) xmlFilename = do
 					
 			"y" -> do -- Delete reservation, needs as input RESERVATIONNUMBER
 					printDummy choice
-					changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
+					--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
+					changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --TODO test
 					return (icount, changedZipper)
 		
 			"r" -> do -- Show train stations, trains, train cars, and seats, needs no input
@@ -169,6 +164,21 @@ printMenu = putStrLn "\nYour Options:\n\
 	Show free seat count needs as input TRAIN, CAR, FROM, TO
 	Show individual reservations needs as input TRAIN, CAR, SEAT
 -}
+
+
+{---------- Maybe Error Handling ----------}
+--do the Maybe stuff, if the result is nothing print out the given error message and return the unchanged input data
+--maybeDo :: ApplicationData -> (ApplicationData -> Maybe ApplicationData) -> String -> IO ApplicationData
+maybeDo :: a -> (a -> Maybe a) -> String -> IO a
+maybeDo d f error = do
+	-- maybe more elegant with fromMaybe
+	newD <- return $ f d
+	case newD of
+		Nothing -> do
+			putStrLn error
+			return d
+		
+		_ -> return $ fromJust newD
 
 
 {---------- XML Handling ----------}
