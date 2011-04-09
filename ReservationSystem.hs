@@ -38,7 +38,7 @@ trains =
 
 type IssuedReservations = Integer
 type XMLData = (IssuedReservations, [RItem])
-type ApplicationData = (IssuedReservations, ReservationZipper)
+type ApplicationData = (Stations, Trains, IssuedReservations, ReservationZipper)
 
 {---------- Station Type ----------}
 
@@ -89,15 +89,15 @@ main = do
 		
 		printWelcome
 		
-		d@(icount, zipper) <- loadData xmlFilename
+		d@(s, t, icount, zipper) <- loadData xmlFilename
 		
 		putStrLn $ show d --TODO test
 
 		printMenu
 		
-		d@(icount, zipper) <- mainloop d
+		d@(s, t, icount, zipper) <- mainloop d
 		
-		writeData (icount, zipper) xmlFilename
+		writeData (s, t, icount, zipper) xmlFilename
 		
 		putStrLn $ show d --TODO test
 		
@@ -109,14 +109,14 @@ main = do
 --reads in user input and processes wanted changes on reservations
 --returns the changed data structure when finished
 mainloop :: ApplicationData -> IO ApplicationData
-mainloop d@(icount, zipper) = do
+mainloop d@(s, t, icount, zipper) = do
 		
 		choice <- getLine
 		--putStr choice
 
 		--TODO process requests
 		--TODO is it stupid to change zipper like this - especially for non-changing functions?
-		d@(icount, zipper) <- case choice of
+		d@(s, t, icount, zipper) <- case choice of
 			"a" -> mNewIndividualReservation d
 					
 			"s" -> mNewGroupReservation d
@@ -173,11 +173,11 @@ mNewGroupReservation appdata = do
 --dialog for removing an existing reservation
 --needs as input RESERVATIONNUMBER
 mDeleteReservation :: ApplicationData -> IO ApplicationData
-mDeleteReservation appdata@(icount, zipper) = do
+mDeleteReservation appdata@(s, t, icount, zipper) = do
 	putStrLn $ "Remove existing reservation TODO"
 	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
 	changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --TODO test
-	return (icount, changedZipper)
+	return (s, t, icount, changedZipper)
 
 --show train stations, trains, train cars, and seats
 --needs no input
@@ -259,7 +259,7 @@ maybeDo d f error = do
 
 --write the zipper data to xml
 writeData :: ApplicationData -> String -> IO ()
-writeData (icount, zipper) xmlFilename = do
+writeData (_, _, icount, zipper) xmlFilename = do
 	putStrLn $ "Trying to write data to " ++ xmlFilename
 	res <- return $ unpackRZipper zipper
 	runX
@@ -328,11 +328,11 @@ loadData xmlFilename = do
 			choice <- getLine
 			
 			case (map toLower choice) == "yes" of --whitespaces are not ignored yet
-				True -> return (0, makeRZipper [])
+				True -> return (stations, trains, 0, makeRZipper [])
 				False -> error "Voted for no, aborting."
 		
 		[(c, z)] -> do
-			return (c, makeRZipper z)
+			return (stations, trains, c, makeRZipper z)
 		
 		_ -> do
 			--putStrLn $ "Unknown error while reading database file " ++ xmlFilename ++ ", loading empty data structure"
