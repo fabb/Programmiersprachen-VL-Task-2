@@ -3,6 +3,7 @@
 module ReservationSystem where
 
 {---------- Imports ----------}
+
 import Data.List (break)
 import Data.Maybe
 import Data.Char
@@ -15,17 +16,20 @@ import System.Environment
 
 
 {---------- Globals ----------}
+
 xmlFilename = "reservations.xml" :: String
 --Relax NG Schema
 rngFilename = "reservations.rng" :: String
 
 
 {---------- Types ----------}
+
 type IssuedReservations = Integer
 type XMLData = (IssuedReservations, [RItem])
 type ApplicationData = (IssuedReservations, ReservationZipper)
 
 {---------- Zipper Type ----------}
+
 --efficiently navigable data structure for representing train reservations
 --it's in fact just a list zipper
 type ReservationZipper = ([RItem],[RCrumb])
@@ -48,6 +52,7 @@ type RCrumb = RItem
 
 
 {---------- Main ----------} 
+
 main :: IO ()
 main = do
 		--[src, dst] <- getArgs
@@ -121,6 +126,7 @@ mainloop d@(icount, zipper) = do
 
 
 {---------- Menu Option Navigation ----------}
+
 --dialog for issuing a new individual reservation
 --needs as input FROM, TO, TRAIN, CAR, COUNT
 mNewIndividualReservation :: ApplicationData -> IO ApplicationData
@@ -162,7 +168,6 @@ mShowFreeSeats :: ApplicationData -> IO ()
 mShowFreeSeats appdata = do
 	putStrLn $ "Show free seat count TODO"
 
-
 --show individual reservations
 --needs as input TRAIN, CAR, SEAT
 mShowIndividualReservations :: ApplicationData -> IO ()
@@ -171,6 +176,7 @@ mShowIndividualReservations appdata = do
 
 
 {---------- Print Output ----------}
+
 printDummy input = putStrLn $ "You pressed key " ++ input
 
 --prints a welcome message when starting the application
@@ -205,6 +211,7 @@ printMenu = putStrLn "\nYour Options:\n\
 
 
 {---------- Maybe Error Handling ----------}
+
 --do the Maybe stuff, if the result is nothing print out the given error message and return the unchanged input data
 --maybeDo :: ApplicationData -> (ApplicationData -> Maybe ApplicationData) -> String -> IO ApplicationData
 maybeDo :: a -> (a -> Maybe a) -> String -> IO a
@@ -220,6 +227,7 @@ maybeDo d f error = do
 
 
 {---------- XML Handling ----------}
+
 --write the zipper data to xml
 writeData :: ApplicationData -> String -> IO ()
 writeData (icount, zipper) xmlFilename = do
@@ -443,4 +451,3 @@ reservationDeleteCurrent ([], _) = Nothing
 --deletes the reservation with the given number
 reservationDelete :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
 reservationDelete resnum z = reservationTo resnum z >>= reservationDeleteCurrent
-

@@ -12,6 +12,7 @@ General
         * provide second xml for configuring trains?
 * correct error handling when reading non-existant xml
     * output on stderr and stdout sometimes is interspersed in output terminal
+* clean up case chaos in mainloop
 * ui for inputting data for each menu option
 * assure that there is enough free place before issuing reservation
 * query existing reservations - yay
