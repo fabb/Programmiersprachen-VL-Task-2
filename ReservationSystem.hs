@@ -21,12 +21,44 @@ xmlFilename = "reservations.xml" :: String
 --Relax NG Schema
 rngFilename = "reservations.rng" :: String
 
+--a fixed number of stations is assumed for simplification reasons
+stationCount = 10 :: Integer
+stations = [1..stationCount] :: Stations
+
+trains =
+	[
+		(1, [(1, [1..10]),(2, [1..10]),(3, [1..10])]),
+		(2, [(1, [1..10]),(2, [1..10]),(3, [1..10])]),
+		(3, [(1, [1..10]),(2, [1..10]),(3, [1..10])]),
+		(4, [(1, [1..10]),(2, [1..10]),(3, [1..10])])
+	] :: Trains
+
 
 {---------- Types ----------}
 
 type IssuedReservations = Integer
 type XMLData = (IssuedReservations, [RItem])
 type ApplicationData = (IssuedReservations, ReservationZipper)
+
+{---------- Station Type ----------}
+
+type Stations = [Station] --stations are connected in a row from element 0 on
+type Station = StationId
+type StationId = Integer
+
+{---------- Train Types ----------}
+
+type Trains = [Train]
+type Train = (TrainId, Cars)
+type TrainId = Integer
+type Cars = [Car]
+type Car = (CarId, Seats)
+--CarId's are only unique within their Train
+type CarId = Integer
+type Seats = [Seat]
+type Seat = SeatId
+--SeatId's are only unique within their Car
+type SeatId = Integer
 
 {---------- Zipper Type ----------}
 
@@ -35,15 +67,12 @@ type ApplicationData = (IssuedReservations, ReservationZipper)
 type ReservationZipper = ([RItem],[RCrumb])
 
 type ReservationNumber = Integer
-type FromStation = Integer
-type ToStation = Integer
-type Train = Integer
-type TrainCar = Integer
+type FromStation = StationId
+type ToStation = StationId
 type SeatCount = Integer
-type SeatNumber = Integer
 
-type GroupReservationData = (FromStation, ToStation, Train, TrainCar, SeatCount)
-type IndividualReservationData = (FromStation, ToStation, Train, TrainCar, SeatNumber)
+type GroupReservationData = (FromStation, ToStation, TrainId, CarId, SeatCount)
+type IndividualReservationData = (FromStation, ToStation, TrainId, CarId, SeatId)
 
 data RItem = GroupReservation ReservationNumber GroupReservationData
              | IndividualReservation ReservationNumber GroupReservationData deriving (Show)

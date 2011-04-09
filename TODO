@@ -6,10 +6,8 @@ General
 
 * should I rename the module ReservationSystem to Main?
     * then I would need to rename the file as well, Main.hs looks ugly
-* decide how to represent stations, trains, cars, seats within program
-    * set up station + train configurations
-    * facilitate changeability?
-        * provide second xml for configuring trains?
+* facilitate changeability for Trains and Stations?
+    * provide second xml for configuring trains?
 * correct error handling when reading non-existant xml
     * output on stderr and stdout sometimes is interspersed in output terminal
 * clean up case chaos in mainloop
