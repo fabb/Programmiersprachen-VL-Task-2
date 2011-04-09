@@ -61,7 +61,7 @@ main = do
 
 		printMenu
 		
-		d@(icount, zipper) <- mainloop d xmlFilename
+		d@(icount, zipper) <- mainloop d
 		
 		writeData (icount, zipper) xmlFilename
 		
@@ -74,8 +74,8 @@ main = do
 
 --reads in user input and processes wanted changes on reservations
 --returns the changed data structure when finished
-mainloop :: ApplicationData -> String -> IO ApplicationData
-mainloop d@(icount, zipper) xmlFilename = do
+mainloop :: ApplicationData -> IO ApplicationData
+mainloop d@(icount, zipper) = do
 		
 		choice <- getLine
 		--putStr choice
@@ -127,7 +127,7 @@ mainloop d@(icount, zipper) xmlFilename = do
 		if choice == "q"
 			then return d
 			else do
-				mainloop d xmlFilename
+				mainloop d
 
 
 
