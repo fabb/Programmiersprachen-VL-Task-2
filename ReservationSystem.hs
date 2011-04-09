@@ -83,36 +83,26 @@ mainloop d@(icount, zipper) = do
 		--TODO process requests
 		--TODO is it stupid to change zipper like this - especially for non-changing functions?
 		d@(icount, zipper) <- case choice of
-			"a" -> do -- New individual reservation, needs as input FROM, TO, TRAIN, CAR, COUNT
-					printDummy choice
-					--return changedZipper
-					return d
+			"a" -> mNewIndividualReservation d
 					
-			"s" -> do -- New group reservation, needs as input FROM, TO, TRAIN, CAR, SEAT
-					printDummy choice
-					--return changedZipper
-					return d
+			"s" -> mNewGroupReservation d
 					
-			"y" -> do -- Delete reservation, needs as input RESERVATIONNUMBER
-					printDummy choice
-					--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
-					changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --TODO test
-					return (icount, changedZipper)
+			"y" -> mDeleteReservation d
 		
-			"r" -> do -- Show train stations, trains, train cars, and seats, needs no input
-					printDummy choice
+			"r" -> do
+					mShowTrains d
 					return d
 					
-			"d" -> do -- Show group reservations, needs as input TRAIN, CAR
-					printDummy choice
+			"d" -> do
+					mShowGroupReservations d
 					return d
 					
-			"f" -> do -- Show free seat count, needs as input TRAIN, CAR, FROM, TO
-					printDummy choice
+			"f" -> do
+					mShowFreeSeats d
 					return d
 					
-			"g" -> do -- Show individual reservations, needs as input TRAIN, CAR, SEAT
-					printDummy choice
+			"g" -> do
+					mShowIndividualReservations d
 					return d
 					
 			"q" -> do
@@ -130,6 +120,54 @@ mainloop d@(icount, zipper) = do
 				mainloop d
 
 
+{---------- Menu Option Navigation ----------}
+--dialog for issuing a new individual reservation
+--needs as input FROM, TO, TRAIN, CAR, COUNT
+mNewIndividualReservation :: ApplicationData -> IO ApplicationData
+mNewIndividualReservation appdata = do
+	putStrLn $ "New individual reservation TODO"
+	return appdata
+
+--dialog for issuing a new group reservation
+--needs as input FROM, TO, TRAIN, CAR, SEAT
+mNewGroupReservation :: ApplicationData -> IO ApplicationData
+mNewGroupReservation appdata = do
+	putStrLn $ "New group reservation TODO"
+	return appdata
+
+--dialog for removing an existing reservation
+--needs as input RESERVATIONNUMBER
+mDeleteReservation :: ApplicationData -> IO ApplicationData
+mDeleteReservation appdata@(icount, zipper) = do
+	putStrLn $ "Remove existing reservation TODO"
+	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
+	changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --TODO test
+	return (icount, changedZipper)
+
+--show train stations, trains, train cars, and seats
+--needs no input
+mShowTrains :: ApplicationData -> IO ()
+mShowTrains appdata = do
+	putStrLn $ "Show trains TODO"
+
+--Show group reservations
+--needs as input TRAIN, CAR
+mShowGroupReservations :: ApplicationData -> IO ()
+mShowGroupReservations appdata = do
+	putStrLn $ "Show group reservations TODO"
+
+--show free seat count
+--needs as input TRAIN, CAR, FROM, TO
+mShowFreeSeats :: ApplicationData -> IO ()
+mShowFreeSeats appdata = do
+	putStrLn $ "Show free seat count TODO"
+
+
+--show individual reservations
+--needs as input TRAIN, CAR, SEAT
+mShowIndividualReservations :: ApplicationData -> IO ()
+mShowIndividualReservations appdata = do
+	putStrLn $ "Show individual reservations TODO"
 
 
 {---------- Print Output ----------}
