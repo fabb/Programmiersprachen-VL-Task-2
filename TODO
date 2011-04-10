@@ -11,10 +11,12 @@ General
 * correct error handling when reading non-existant xml
     * output on stderr and stdout sometimes is interspersed in output terminal
 * clean up case chaos in mainloop
-* ui for inputting data for each menu option
 * assure that there is enough free place before issuing reservation
 * query existing reservations - yay
 * Zippers are great, but we could also look into Data.IntMap
+* if static trains or stations is changed combined with the usage of a deprecated xml, a checkConsitency function could come in handy
+* Task Description unclear: "Mindestanzahl der freien und maximale Anzahl der durch Einzelreservierung bzw. Gruppenreservierung belegten Plätze pro Zug und Waggon"
+    * should the free places be calculated for all trains and separated by cars OR should a train and car be input OR both and more?
 
 
 Features

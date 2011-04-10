@@ -1,4 +1,5 @@
 --Fabian Ehrentraud, Bernhard Urban, 2011
+--needs -XScopedTypeVariables
 
 module ReservationSystem where
 
@@ -100,8 +101,6 @@ main = do
 		
 		putStrLn $ show d --TODO test
 
-		printMenu
-		
 		d <- mainloop d
 		
 		writeData d xmlFilename
@@ -117,6 +116,8 @@ main = do
 --returns the changed data structure when finished
 mainloop :: ApplicationData -> IO ApplicationData
 mainloop appData = do
+		
+		printMenu
 		
 		choice <- getLine
 		--putStr choice
@@ -153,48 +154,266 @@ mainloop appData = do
 --needs as input FROM, TO, TRAIN, CAR, COUNT
 mNewIndividualReservation :: ApplicationData -> IO ApplicationData
 mNewIndividualReservation appdata = do
-	putStrLn $ "New individual reservation TODO"
-	return appdata
+	putStrLn $ "New Individual Reservation"
+
+	putStrLn $ "Please input Starting-Station-ID, Destination-Station-ID, Train-ID, Car-ID and Seat-ID separated by spaces"
+	
+	i <- inputElements 5
+	
+	changedAppdata <- case i of
+		Right [startstation :: Station, endstation :: Station, trainid :: TrainId, carid :: CarId, seatid :: SeatId] -> do --FIXME unfortunately it does not work like that
+			r <- return $ newIndividualReservation appdata startstation endstation trainid carid seatid
+			
+			case r of
+				Left error -> do
+					putStrLn error
+					return appdata
+					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+					--mDeleteReservation appdata
+				Right newAppdata -> do
+					putStrLn $ "Successfully added new Individual Reservation from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
+					return newAppdata
+		
+		e -> inputElementsNonfit e >> return appdata
+	
+	return changedAppdata
+
 
 --dialog for issuing a new group reservation
 --needs as input FROM, TO, TRAIN, CAR, SEAT
 mNewGroupReservation :: ApplicationData -> IO ApplicationData
 mNewGroupReservation appdata = do
-	putStrLn $ "New group reservation TODO"
-	return appdata
+	putStrLn $ "New Group Reservation"
+
+	putStrLn $ "Please input Starting-Station-ID, Destination-Station-ID, Train-ID, Car-ID and Seat-Count separated by spaces"
+	
+	i <- inputElements 5
+	
+	changedAppdata <- case i of
+		Right [startstation :: Station, endstation :: Station, trainid :: TrainId, carid :: CarId, seatcount :: SeatCount] -> do --FIXME unfortunately it does not work like that
+			r <- return $ newGroupReservation appdata startstation endstation trainid carid seatcount
+			
+			case r of
+				Left error -> do
+					putStrLn error
+					return appdata
+					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+					--mDeleteReservation appdata
+				Right newAppdata -> do
+					putStrLn $ "Successfully added new Group Reservation for " ++ show seatcount ++ " Persons from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid
+					return newAppdata
+		
+		e -> inputElementsNonfit e >> return appdata
+	
+	return changedAppdata
 
 --dialog for removing an existing reservation
 --needs as input RESERVATIONNUMBER
 mDeleteReservation :: ApplicationData -> IO ApplicationData
-mDeleteReservation appdata@(s, t, icount, zipper) = do
-	putStrLn $ "Remove existing reservation TODO"
-	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
-	changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --TODO test
-	return (s, t, icount, changedZipper)
+mDeleteReservation appdata = do
+	putStrLn $ "Remove Existing Reservation"
+
+	putStrLn $ "Please input the Reservation-Number"
+	
+	i <- inputElements 1
+	
+	changedAppdata <- case i of
+		Right [reservationnumber :: ReservationNumber] -> do --FIXME unfortunately it does not work like that
+			r <- return $ deleteReservation appdata reservationnumber
+			
+			case r of
+				Left error -> do
+					putStrLn error
+					return appdata
+					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+					--mDeleteReservation appdata
+				Right newAppdata -> do
+					putStrLn $ "Successfully removed Reservation " ++ show reservationnumber
+					return newAppdata
+		
+		e -> inputElementsNonfit e >> return appdata
+	
+	return changedAppdata
 
 --show train stations, trains, train cars, and seats
 --needs no input
 mShowTrains :: ApplicationData -> IO ()
 mShowTrains appdata = do
-	putStrLn $ "Show trains TODO"
+	putStrLn $ "Show Trains and Stations"
+
+	putStrLn $ "Stations:"	
+	putStrLn $ show $ getStations appdata --TODO if Station was a data type, it could have a nice instance Show
+	
+	putStrLn $ "Trains:"	
+	putStrLn $ show $ getTrains appdata --TODO if Train was a data type, it could have a nice instance Show
 
 --Show group reservations
 --needs as input TRAIN, CAR
 mShowGroupReservations :: ApplicationData -> IO ()
 mShowGroupReservations appdata = do
-	putStrLn $ "Show group reservations TODO"
+	putStrLn $ "Show Group Reservations"
+
+	putStrLn $ "Please input Train-ID and Car-ID separated by spaces"
+	
+	i <- inputElements 2
+	
+	case i of
+		Right [trainid :: TrainId, carid :: CarId] -> do --FIXME unfortunately it does not work like that
+			r <- return $ groupReservations appdata trainid carid
+			
+			case r of
+				Left error -> putStrLn error
+					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+					--mShowGroupReservations appdata
+				Right groupreservations -> do
+					putStrLn $ "The following group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ":"
+					putStrLn $ show groupreservations
+		
+		e -> inputElementsNonfit e
 
 --show free seat count
 --needs as input TRAIN, CAR, FROM, TO
 mShowFreeSeats :: ApplicationData -> IO ()
 mShowFreeSeats appdata = do
-	putStrLn $ "Show free seat count TODO"
+	putStrLn $ "Show Free Seat Count"
+
+	putStrLn $ "Please input Train-ID, Car-ID, Starting-Station-ID and Destination-Station-ID separated by spaces"
+	
+	i <- inputElements 4
+	
+	case i of
+		Right [trainid :: TrainId, carid :: CarId, startstation :: Station, endstation :: Station] -> do --FIXME unfortunately it does not work like that
+			r <- return $ freeSeats appdata trainid carid startstation endstation
+			
+			case r of
+				Left error -> putStrLn error
+					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+					--mShowFreeSeats appdata
+				Right seats -> do
+					putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
+					putStrLn $ show seats
+		
+		e -> inputElementsNonfit e
 
 --show individual reservations
 --needs as input TRAIN, CAR, SEAT
 mShowIndividualReservations :: ApplicationData -> IO ()
 mShowIndividualReservations appdata = do
-	putStrLn $ "Show individual reservations TODO"
+	putStrLn $ "Show Individual Reservations"
+	
+	putStrLn $ "Please input Train-ID, Car-ID and Seat-ID separated by spaces"
+	
+	i <- inputElements 3
+	
+	case i of
+		Right [trainid :: TrainId, carid :: CarId, seatid :: SeatId] -> do --FIXME unfortunately it does not work like that
+			r <- return $ individualReservations appdata trainid carid seatid
+			
+			case r of
+				Left error -> putStrLn error
+					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+					--mShowIndividualReservations appdata
+				Right reservations -> do
+					putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":"
+					putStrLn $ show reservations
+		
+		e -> inputElementsNonfit e
+
+
+{---------- Input Unpacking ----------}
+
+{-
+testI i = case i of
+	Right [trainid :: TrainId, carid :: CarId, seatid :: SeatId] -> do --FIXME unfortunately it does not work like that
+		putStrLn "passt"
+	
+	e -> inputElementsNonfit e
+-}
+
+--handle cases where returns of inputElements could not be mapped to according elements
+--this must be preceded by a correct handling Right x case
+inputElementsNonfit :: Either String b -> IO ()
+inputElementsNonfit i = case i of
+	Left x -> do
+		putStrLn x
+		putStrLn "Returning to Main Menu"
+	
+	Right _ -> do
+		putStrLn "Input Arguments of wrong type"
+		putStrLn "Returning to Main Menu"
+
+--reads in the given count of elements from a line in stdin
+--eror messages get printed out
+--FIXME how to error-safe unpack data at caller without yet knowing which types it will unpack to?
+inputElements :: Read a => Integer -> IO (Either String [a])
+inputElements c = do
+	line <- getLine
+	elements <- return $ getSubs c line
+	case elements of
+		Just xs -> return $ Right $ map read xs
+		Nothing -> return $ Left $ "Could not read in the " ++ show c ++ " wanted elements"
+			--putStrLn "please input correct number of elements" >>= inputElements c --TODO exit strategy?
+
+--reads in the given count of elements from the given String
+--spaces separate substrings
+getSubs :: Integer -> String -> Maybe [String]
+getSubs c xs
+	| length' (tokenize xs) == c = Just $ tokenize xs
+	| otherwise = Nothing
+
+--splits the given String into substrings
+--spaces separate substrings
+tokenize :: String -> [String]
+tokenize xs
+	| null noleading = []
+	| otherwise = current : tokenize rest
+	where
+		noleading = dropWhile (==' ') xs
+		current = takeWhile (/=' ') noleading
+		rest = dropWhile (/=' ') noleading
+
+--maybeRead :: 
+--maybeRead = fmap fst . listToMaybe . reads
+
+
+{---------- Real Working Functions ----------}
+
+--TODO here is work to do
+
+--issues a new individual reservation when there is enough place left
+newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> Either String ApplicationData
+newIndividualReservation appdata startstation endstation trainid carid seatid = do
+	--Left "Could not do anything"
+	Right appdata
+
+--issues a new group reservation when there is enough place left
+newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String ApplicationData
+newGroupReservation appdata startstation endstation trainid carid seatcount = do
+	--Left "Could not do anything"
+	Right appdata
+
+--deletes the given reservation with the given reservation number
+deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
+deleteReservation appdata@(s, t, icount, zipper) reservationnumber = do --TODO use ADT function (or create new ones) to modify appdata
+	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
+	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --FIXME
+	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --FIXME
+	--return $ Right (s, t, icount, changedZipper)
+	--Left "Could not do anything"
+	Right (s, t, icount, zipper)
+			
+
+--calculates group reservations for given Train Car
+groupReservations :: ApplicationData -> TrainId -> CarId -> Either String [(ReservationNumber,SeatCount,FromStation,ToStation)]
+groupReservations appdata trainid carid = {- Left "Could not do anything" -} Right [(1,2,3,4)] --FIXME
+
+--calculates minimum free seat count in given Train Car between given Stations
+freeSeats :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Either String SeatCount
+freeSeats appdata trainid carid startstation endstation = {- Left "Could not do anything" -} Right 10 --FIXME
+
+--calculates individual reservations for the given seat (in the given car (which is part of the given train))
+individualReservations :: ApplicationData -> TrainId -> CarId -> SeatId -> Either String [IndividualReservationData]
+individualReservations appData train car seat = {- Left "Could not do anything" -} Right [(1,10,1,1,1)] --FIXME
 
 
 {---------- Access ApplicationData ----------}
