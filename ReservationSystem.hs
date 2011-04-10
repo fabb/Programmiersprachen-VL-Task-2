@@ -391,16 +391,17 @@ newGroupReservation appdata startstation endstation trainid carid seatcount = do
 	--Left "Could not do anything"
 	Right appdata
 
---deletes the given reservation with the given reservation number
+--deletes the reservation with the given reservation number
 deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
-deleteReservation appdata@(s, t, icount, zipper) reservationnumber = do --TODO use ADT function (or create new ones) to modify appdata
-	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --TODO test
-	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --FIXME
-	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --FIXME
-	--return $ Right (s, t, icount, changedZipper)
-	--Left "Could not do anything"
-	Right (s, t, icount, zipper)
-			
+deleteReservation appdata reservationnumber = do
+	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --test
+	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --test
+	--changedZipper <- return $ reservationDeleteCurrent (getReservationZipper appdata) --TODO test, just deletes first item
+	--changedZipper <- return $ reservationTo reservationnumber (getReservationZipper appdata) >>= reservationDeleteCurrent
+	changedZipper <- return $ reservationDelete reservationnumber (getReservationZipper appdata)
+	case changedZipper of
+		Nothing -> Left "Error: No such Reservation found"
+		Just x -> Right $ setReservationZipper appdata x
 
 --calculates group reservations for given Train Car
 groupReservations :: ApplicationData -> TrainId -> CarId -> Either String [(ReservationNumber,SeatCount,FromStation,ToStation)]
