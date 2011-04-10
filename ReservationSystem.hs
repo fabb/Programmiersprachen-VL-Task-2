@@ -428,8 +428,14 @@ getTrains (_, t, _, _) = t
 getIssuedReservations :: ApplicationData -> IssuedReservations
 getIssuedReservations (_, _, i, _) = i
 
+setIssuedReservations :: ApplicationData -> IssuedReservations -> ApplicationData
+setIssuedReservations (s, t, _, z) i = (s, t, i, z)
+
 getReservationZipper :: ApplicationData -> ReservationZipper
 getReservationZipper (_, _, _, z) = z
+
+setReservationZipper :: ApplicationData -> ReservationZipper -> ApplicationData
+setReservationZipper (s, t, i, _) z = (s, t, i, z)
 
 
 {---------- Access Stations ADT ----------}
