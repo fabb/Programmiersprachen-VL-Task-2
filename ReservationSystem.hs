@@ -7,6 +7,7 @@ module ReservationSystem where
 import Data.List (break)
 import Data.Maybe
 import Data.Char
+import Data.List
 --import IO
 import Text.XML.HXT.Core
 import Text.XML.HXT.RelaxNG
@@ -194,6 +195,122 @@ mShowFreeSeats appdata = do
 mShowIndividualReservations :: ApplicationData -> IO ()
 mShowIndividualReservations appdata = do
 	putStrLn $ "Show individual reservations TODO"
+
+
+{---------- Access ApplicationData ----------}
+
+--type ApplicationData = (Stations, Trains, IssuedReservations, ReservationZipper)
+
+getStations :: ApplicationData -> Stations
+getStations (s, _, _, _) = s
+
+getTrains :: ApplicationData -> Trains
+getTrains (_, t, _, _) = t
+
+getIssuedReservations :: ApplicationData -> IssuedReservations
+getIssuedReservations (_, _, i, _) = i
+
+getReservationZipper :: ApplicationData -> ReservationZipper
+getReservationZipper (_, _, _, z) = z
+
+
+{---------- Access Stations ADT ----------}
+
+--could also be dependent of Train if it does not stop in all Stations, not implemented for simplification reasons
+getStationsBetween :: FromStation -> ToStation -> Stations -> Maybe [Station]
+getStationsBetween = takeRange
+
+
+--gets the range from the given list where all items between and including the first occurrence of the "first" item and the first ocurrence of the "last" item are returned
+--when the "first" item occurrs after the "last" item in the given list, the result is reversed in order to let the "first" item really appear first
+takeRange :: Eq a => a -> a -> [a] -> Maybe [a]
+takeRange first last list
+	| notElem first list || notElem last list = Nothing
+	| first == last = Just [first]
+	| occurrsBefore first last list = Just $ takeWhileInclusive (/=last) $ dropWhile (/=first) list
+	| not $ occurrsBefore first last list = Just $ reverse $ takeWhileInclusive (/=first) $ dropWhile (/=last) list
+
+--returns whether the first element occurrs before the second one in the given list
+--when the two elements are equal, return False
+--both elements must be guaranteed to be contained in the list
+occurrsBefore :: Eq a => a -> a -> [a] -> Bool
+occurrsBefore a b l = notElem b $ takeWhileInclusive (/=a) l
+
+--same as takeWhile, but also adds the last, non-matching element
+takeWhileInclusive :: (a -> Bool) -> [a] -> [a]
+takeWhileInclusive _ [] = []
+takeWhileInclusive p (x:xs)
+	| p x       =  x : takeWhileInclusive p xs
+	| otherwise =  [x]
+
+
+{---------- Access Trains ADT ----------}
+
+--type Train = (TrainId, Cars)
+getTrainId :: Train -> TrainId
+getTrainId = fst
+
+getCars :: Train -> Cars
+getCars = snd
+
+--type Car = (CarId, Seats)
+getCarId :: Car -> CarId
+getCarId = fst
+
+getSeats :: Car -> Seats
+getSeats = snd
+
+--type Seat = SeatId
+getSeatId :: Seat -> SeatId
+getSeatId = id
+
+
+
+getTrain :: TrainId -> Trains -> Maybe Train
+getTrain tId trains = find (\ t -> getTrainId t == tId) trains
+
+getCar :: CarId -> Train -> Maybe Car
+getCar cId train = find (\ c -> getCarId c == cId) $ getCars train
+
+getSeat :: SeatId -> Car -> Maybe Seat
+getSeat sId car = find (\ s -> getSeatId s == sId) $ getSeats car
+
+
+existsTrain :: TrainId -> Trains -> Bool
+existsTrain tId trains = getTrain tId trains /= Nothing
+
+existsCar :: CarId -> Train -> Bool
+existsCar cId train = getCar cId train /= Nothing
+
+existsTrainCar :: TrainId -> CarId -> Trains -> Bool
+existsTrainCar tId cId train = (getTrain tId trains >>= getCar cId) /= Nothing
+
+existsSeat :: SeatId -> Car -> Bool
+existsSeat sId car = getSeat sId car /= Nothing
+
+existsTrainCarSeat :: TrainId -> CarId -> SeatId -> Trains -> Bool
+existsTrainCarSeat tId cId sId train = (getTrain tId trains >>= getCar cId >>= getSeat sId) /= Nothing
+
+{- only working with data, not with type
+class SeatCountable a where
+	getSeatCount :: a -> Integer
+
+instance SeatCountable Train where
+	getSeatCount train = sum $ map getSeatCount $ getCars train
+
+instance SeatCountable Car where
+	getSeatCount car = length $ getSeats car
+-}
+
+getSeatCountTrain :: Train -> Integer
+getSeatCountTrain train = sum $ map getSeatCountCar $ getCars train
+
+getSeatCountCar :: Car -> Integer
+getSeatCountCar car = length' $ getSeats car
+
+length' :: [a] -> Integer
+length' (x:xs) = 1 + length' xs
+length' [] = 0
 
 
 {---------- Print Output ----------}
