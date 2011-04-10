@@ -10,7 +10,6 @@ import Data.Char
 --import IO
 import Text.XML.HXT.Core
 import Text.XML.HXT.RelaxNG
---import Text.XML.HXT.Curl -- use libcurl for HTTP access, only necessary when reading http://...
  
 import System.Environment
 
@@ -96,15 +95,15 @@ main = do
 		
 		printWelcome
 		
-		d@(s, t, icount, zipper) <- loadData xmlFilename
+		d <- loadData xmlFilename
 		
 		putStrLn $ show d --TODO test
 
 		printMenu
 		
-		d@(s, t, icount, zipper) <- mainloop d
+		d <- mainloop d
 		
-		writeData (s, t, icount, zipper) xmlFilename
+		writeData d xmlFilename
 		
 		putStrLn $ show d --TODO test
 		
@@ -116,49 +115,35 @@ main = do
 --reads in user input and processes wanted changes on reservations
 --returns the changed data structure when finished
 mainloop :: ApplicationData -> IO ApplicationData
-mainloop d@(s, t, icount, zipper) = do
+mainloop appData = do
 		
 		choice <- getLine
 		--putStr choice
 
-		--TODO process requests
 		--TODO is it stupid to change zipper like this - especially for non-changing functions?
-		d@(s, t, icount, zipper) <- case choice of
-			"a" -> mNewIndividualReservation d
+		appData <- case choice of
+			"a" -> mNewIndividualReservation appData
 					
-			"s" -> mNewGroupReservation d
+			"s" -> mNewGroupReservation appData
 					
-			"y" -> mDeleteReservation d
+			"y" -> mDeleteReservation appData
 		
-			"r" -> do
-					mShowTrains d
-					return d
+			"r" -> mShowTrains appData >> return appData
 					
-			"d" -> do
-					mShowGroupReservations d
-					return d
+			"d" -> mShowGroupReservations appData >> return appData
 					
-			"f" -> do
-					mShowFreeSeats d
-					return d
+			"f" -> mShowFreeSeats appData >> return appData
 					
-			"g" -> do
-					mShowIndividualReservations d
-					return d
+			"g" -> mShowIndividualReservations appData >> return appData
 					
-			"q" -> do
-					--TODO could I quit from here when the result is assigned to zipper with <- ?
-					printDummy choice
-					return d
+			"q" -> {- printDummy choice >> -} return appData --TODO could I quit from here when the result is assigned to zipper with <- ?
 			
-			_   -> do
-					putStrLn $ "Wrong input of '" ++ choice ++ "', please choose again."
-					return d
+			_   -> putStrLn ("Wrong input of '" ++ choice ++ "', please choose again.") >> return appData
 
 		if choice == "q"
-			then return d
+			then return appData
 			else do
-				mainloop d
+				mainloop appData
 
 
 {---------- Menu Option Navigation ----------}
