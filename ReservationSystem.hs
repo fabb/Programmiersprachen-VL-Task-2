@@ -5,7 +5,6 @@ module ReservationSystem where
 
 {---------- Imports ----------}
 
-import Data.List (break)
 import Data.Maybe
 import Data.Char
 import Data.List
@@ -580,7 +579,24 @@ maybeDo d f error = do
 			putStrLn error
 			return d
 		
-		_ -> return $ fromJust newD
+		Just j -> return j
+
+
+{---------- Either Error Handling ----------}
+
+--in the Either Monad, the Left value is the error value which will stick and not be overwritten in a row of >>=
+--the Right value is the useful data which gets passed to the next Either function
+
+--do the Either stuff, a Left (error) value will stick and print out in the end
+eitherDo :: a -> (a -> Either String a) -> IO a
+eitherDo d f = do
+	newD <- return $ f d
+	case newD of
+		Left x -> do
+			putStrLn x
+			return d
+		
+		Right y -> return y
 
 
 {---------- XML Handling ----------}
