@@ -33,6 +33,13 @@ trains =
 		(4, [(1, [1..10]),(2, [1..10]),(3, [1..10])])
 	] :: Trains
 
+--global minimum of free seats per train
+minFreeSeats = 10 :: Integer
+
+--minimum of free seats for the given Train
+--for simplification reasons this is static for all Trains, but using this function instead allows to easier incorporate a maximum per Train into the Train type
+minFreeTrainSeats :: Train -> Integer
+minFreeTrainSeats _ = minFreeSeats
 
 {---------- Types ----------}
 
