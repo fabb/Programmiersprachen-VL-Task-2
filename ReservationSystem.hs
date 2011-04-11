@@ -383,13 +383,13 @@ tokenize xs
 newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> Either String ApplicationData
 newIndividualReservation appdata startstation endstation trainid carid seatid = do
 	--Left "Could not do anything"
-	Right appdata
+	Right $ incIssuedReservations appdata
 
 --issues a new group reservation when there is enough place left
 newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String ApplicationData
 newGroupReservation appdata startstation endstation trainid carid seatcount = do
 	--Left "Could not do anything"
-	Right appdata
+	Right $ incIssuedReservations appdata
 
 --deletes the reservation with the given reservation number
 deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
@@ -437,6 +437,13 @@ getReservationZipper (_, _, _, z) = z
 
 setReservationZipper :: ApplicationData -> ReservationZipper -> ApplicationData
 setReservationZipper (s, t, i, _) z = (s, t, i, z)
+
+
+{---------- Access IssuedReservations ADT ----------}
+
+--increase unique reservatin number counter (after issuiong a reservation)
+incIssuedReservations :: ApplicationData -> ApplicationData
+incIssuedReservations appdata = setIssuedReservations appdata $ 1 + getIssuedReservations appdata
 
 
 {---------- Access Stations ADT ----------}
