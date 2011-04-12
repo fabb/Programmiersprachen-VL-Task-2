@@ -442,14 +442,30 @@ tokenizeWS xs
 --issues a new individual reservation when there is enough place left
 newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> Either String ApplicationData
 newIndividualReservation appdata startstation endstation trainid carid seatid = do
-	--Left "Could not do anything"
-	Right $ incIssuedReservations appdata
+	newData <- return $ incIssuedReservations appdata
+	newIR <- return $ IndividualReservation (getIssuedReservations appdata) (startstation, endstation, trainid, carid, seatid)
+	case isReservationPossible appdata newIR of
+		Left x -> Left x
+		Right _ -> do
+			rz <- return $ getReservationZipper appdata
+			mrz <- return $ reservationNewLast newIR rz
+			case mrz of
+				Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
+				Just newData -> return $ setReservationZipper appdata newData
 
 --issues a new group reservation when there is enough place left
 newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String ApplicationData
 newGroupReservation appdata startstation endstation trainid carid seatcount = do
-	--Left "Could not do anything"
-	Right $ incIssuedReservations appdata
+	newData <- return $ incIssuedReservations appdata
+	newGR <- return $ GroupReservation (getIssuedReservations appdata) (startstation, endstation, trainid, carid, seatcount)
+	case isReservationPossible appdata newGR of
+		Left x -> Left x
+		Right _ -> do
+			rz <- return $ getReservationZipper appdata
+			mrz <- return $ reservationNewLast newGR rz
+			case mrz of
+				Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
+				Just newData -> return $ setReservationZipper appdata newData
 
 --deletes the reservation with the given reservation number
 deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
@@ -474,6 +490,21 @@ freeSeats appdata trainid carid startstation endstation = {- Left "Could not do 
 --calculates individual reservations for the given seat (in the given car (which is part of the given train))
 individualReservations :: ApplicationData -> TrainId -> CarId -> SeatId -> Either String [IndividualReservationData]
 individualReservations appData train car seat = {- Left "Could not do anything" -} Right [(1,10,1,1,1)] --FIXME
+
+
+{---------- Check Reservation Possibility ----------}
+
+--TODO
+
+--calculates whether the given, not yet issued, reservation is possible
+--Bool does not hold any information
+isReservationPossible :: ApplicationData -> RItem -> Either String Bool
+
+isReservationPossible appdata (GroupReservation resnum gdata) = Right True --Left "isReservationPossible not implemented yet" --undefined
+
+isReservationPossible appdata (IndividualReservation resnum idata) = Right True --Left "isReservationPossible not implemented yet" --undefined
+
+
 
 
 {---------- Access ApplicationData ----------}
