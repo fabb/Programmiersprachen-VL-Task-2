@@ -82,7 +82,7 @@ type GroupReservationData = (FromStation, ToStation, TrainId, CarId, SeatCount)
 type IndividualReservationData = (FromStation, ToStation, TrainId, CarId, SeatId)
 
 data RItem = GroupReservation ReservationNumber GroupReservationData
-             | IndividualReservation ReservationNumber GroupReservationData deriving (Show)
+             | IndividualReservation ReservationNumber IndividualReservationData deriving (Show)
 type RCrumb = RItem 
 
 
