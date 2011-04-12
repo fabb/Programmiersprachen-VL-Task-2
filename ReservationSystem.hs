@@ -120,6 +120,8 @@ mainloop appData = do
 		
 		choice <- getLine
 		--putStr choice
+		
+		putStrLn ""
 
 		--TODO is it stupid to change zipper like this - especially for non-changing functions?
 		appData <- case choice of
@@ -153,226 +155,284 @@ mainloop appData = do
 --needs as input FROM, TO, TRAIN, CAR, COUNT
 mNewIndividualReservation :: ApplicationData -> IO ApplicationData
 mNewIndividualReservation appdata = do
-	putStrLn $ "New Individual Reservation"
+	putStrLn $ "New Individual Reservation\n"
 
 	putStrLn $ "Please input Starting-Station-ID, Destination-Station-ID, Train-ID, Car-ID and Seat-ID separated by spaces"
 	
-	i <- inputElements 5
+	l <- getLine
+	x <- return $ tokenizeWS l
 	
-	changedAppdata <- case i of
-		Right [startstation :: Station, endstation :: Station, trainid :: TrainId, carid :: CarId, seatid :: SeatId] -> do --FIXME unfortunately it does not work like that
-			r <- return $ newIndividualReservation appdata startstation endstation trainid carid seatid
+	putStrLn ""
+	
+	newD <- case x of
+		[startstation, endstation, trainid, carid, seatid] -> do
+			y <- return (maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId, maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatid :: Maybe SeatId)
+			case y of
+				(Just startstation, Just endstation, Just trainid, Just carid, Just seatid) -> do
+					z <- return $ newIndividualReservation appdata startstation endstation trainid carid seatid
 			
-			case r of
-				Left error -> do
-					putStrLn error
-					return appdata
-					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-					--mDeleteReservation appdata
-				Right newAppdata -> do
-					putStrLn $ "Successfully added new Individual Reservation from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
-					return newAppdata
-		
-		e -> inputElementsNonfit e >> return appdata
-	
-	return changedAppdata
+					case z of
+						Left error -> do
+							putStrLn error
+							return appdata
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right newAppdata -> do
+							putStrLn $ "Successfully added new Individual Reservation from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
+							return newAppdata
 
+				e -> wrongTypes e >> return appdata
+			
+		e -> wrongArgumentCount e >> return appdata
+	
+	wait
+	
+	return newD
 
 --dialog for issuing a new group reservation
 --needs as input FROM, TO, TRAIN, CAR, SEAT
 mNewGroupReservation :: ApplicationData -> IO ApplicationData
 mNewGroupReservation appdata = do
-	putStrLn $ "New Group Reservation"
+	putStrLn $ "New Group Reservation\n"
 
 	putStrLn $ "Please input Starting-Station-ID, Destination-Station-ID, Train-ID, Car-ID and Seat-Count separated by spaces"
 	
-	i <- inputElements 5
+	l <- getLine
+	x <- return $ tokenizeWS l
 	
-	changedAppdata <- case i of
-		Right [startstation :: Station, endstation :: Station, trainid :: TrainId, carid :: CarId, seatcount :: SeatCount] -> do --FIXME unfortunately it does not work like that
-			r <- return $ newGroupReservation appdata startstation endstation trainid carid seatcount
+	putStrLn ""
+	
+	newD <- case x of
+		[startstation, endstation, trainid, carid, seatcount] -> do
+			y <- return (maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId, maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatcount :: Maybe SeatCount)
+			case y of
+				(Just startstation, Just endstation, Just trainid, Just carid, Just seatcount) -> do
+					z <- return $ newGroupReservation appdata startstation endstation trainid carid seatcount
 			
-			case r of
-				Left error -> do
-					putStrLn error
-					return appdata
-					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-					--mDeleteReservation appdata
-				Right newAppdata -> do
-					putStrLn $ "Successfully added new Group Reservation for " ++ show seatcount ++ " Persons from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid
-					return newAppdata
-		
-		e -> inputElementsNonfit e >> return appdata
+					case z of
+						Left error -> do
+							putStrLn error
+							return appdata
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right newAppdata -> do
+							putStrLn $ "Successfully added new Group Reservation for " ++ show seatcount ++ " Persons from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid
+							return newAppdata
+
+				e -> wrongTypes e >> return appdata
+			
+		e -> wrongArgumentCount e >> return appdata
 	
-	return changedAppdata
+	wait
+	
+	return newD
 
 --dialog for removing an existing reservation
 --needs as input RESERVATIONNUMBER
 mDeleteReservation :: ApplicationData -> IO ApplicationData
 mDeleteReservation appdata = do
-	putStrLn $ "Remove Existing Reservation"
+	putStrLn $ "Remove Existing Reservation\n"
 
 	putStrLn $ "Please input the Reservation-Number"
 	
-	i <- inputElements 1
+	l <- getLine
+	x <- return $ tokenizeWS l
 	
-	changedAppdata <- case i of
-		Right [reservationnumber :: ReservationNumber] -> do --FIXME unfortunately it does not work like that
-			r <- return $ deleteReservation appdata reservationnumber
+	putStrLn ""
+	
+	newD <- case x of
+		[reservationnumber] -> do
+			y <- return (maybeReadTWS reservationnumber :: Maybe ReservationNumber)
+			case y of
+				(Just reservationnumber) -> do
+					z <- return $ deleteReservation appdata reservationnumber
 			
-			case r of
-				Left error -> do
-					putStrLn error
-					return appdata
-					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-					--mDeleteReservation appdata
-				Right newAppdata -> do
-					putStrLn $ "Successfully removed Reservation " ++ show reservationnumber
-					return newAppdata
-		
-		e -> inputElementsNonfit e >> return appdata
+					case z of
+						Left error -> do
+							putStrLn error
+							return appdata
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right newAppdata -> do
+							putStrLn $ "Successfully removed Reservation " ++ show reservationnumber
+							return newAppdata
+
+				e -> wrongTypes e >> return appdata
+			
+		e -> wrongArgumentCount e >> return appdata
 	
-	return changedAppdata
+	wait
+	
+	return newD
 
 --show train stations, trains, train cars, and seats
 --needs no input
 mShowTrains :: ApplicationData -> IO ()
 mShowTrains appdata = do
-	putStrLn $ "Show Trains and Stations"
+	putStrLn $ "Show Trains and Stations\n"
 
 	putStrLn $ "Stations:"	
 	putStrLn $ show $ getStations appdata --TODO if Station was a data type, it could have a nice instance Show
-	
+	putStrLn ""
 	putStrLn $ "Trains:"	
 	putStrLn $ show $ getTrains appdata --TODO if Train was a data type, it could have a nice instance Show
+	
+	wait
 
 --Show group reservations
 --needs as input TRAIN, CAR
 mShowGroupReservations :: ApplicationData -> IO ()
 mShowGroupReservations appdata = do
-	putStrLn $ "Show Group Reservations"
+	putStrLn $ "Show Group Reservations\n"
 
 	putStrLn $ "Please input Train-ID and Car-ID separated by spaces"
 	
-	i <- inputElements 2
+	l <- getLine
+	x <- return $ tokenizeWS l
 	
-	case i of
-		Right [trainid :: TrainId, carid :: CarId] -> do --FIXME unfortunately it does not work like that
-			r <- return $ groupReservations appdata trainid carid
+	putStrLn ""
+	
+	case x of
+		[trainid, carid] -> do
+			y <- return (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId)
+			case y of
+				(Just trainid, Just carid) -> do
+					z <- return $ groupReservations appdata trainid carid
 			
-			case r of
-				Left error -> putStrLn error
-					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-					--mShowGroupReservations appdata
-				Right groupreservations -> do
-					putStrLn $ "The following group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ":"
-					putStrLn $ show groupreservations
-		
-		e -> inputElementsNonfit e
+					case z of
+						Left error -> putStrLn error
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right groupreservations -> do
+							putStrLn $ "The following group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ":"
+							putStrLn $ show groupreservations
+
+				e -> wrongTypes e
+			
+		e -> wrongArgumentCount e
+	
+	wait
 
 --show free seat count
 --needs as input TRAIN, CAR, FROM, TO
 mShowFreeSeats :: ApplicationData -> IO ()
 mShowFreeSeats appdata = do
-	putStrLn $ "Show Free Seat Count"
+	putStrLn $ "Show Free Seat Count\n"
 
 	putStrLn $ "Please input Train-ID, Car-ID, Starting-Station-ID and Destination-Station-ID separated by spaces"
 	
-	i <- inputElements 4
+	l <- getLine
+	x <- return $ tokenizeWS l
 	
-	case i of
-		Right [trainid :: TrainId, carid :: CarId, startstation :: Station, endstation :: Station] -> do --FIXME unfortunately it does not work like that
-			r <- return $ freeSeats appdata trainid carid startstation endstation
+	putStrLn ""
+	
+	case x of
+		[trainid, carid, startstation, endstation] -> do
+			y <- return (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId)
+			case y of
+				(Just trainid, Just carid, Just startstation, Just endstation) -> do
+					z <- return $ freeSeats appdata trainid carid startstation endstation
 			
-			case r of
-				Left error -> putStrLn error
-					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-					--mShowFreeSeats appdata
-				Right seats -> do
-					putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
-					putStrLn $ show seats
-		
-		e -> inputElementsNonfit e
+					case z of
+						Left error -> putStrLn error
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right seats -> do
+							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
+							putStrLn $ show seats
+
+				e -> wrongTypes e
+			
+		e -> wrongArgumentCount e
+	
+	wait
 
 --show individual reservations
 --needs as input TRAIN, CAR, SEAT
 mShowIndividualReservations :: ApplicationData -> IO ()
 mShowIndividualReservations appdata = do
-	putStrLn $ "Show Individual Reservations"
+	putStrLn $ "Show Individual Reservations\n"
 	
 	putStrLn $ "Please input Train-ID, Car-ID and Seat-ID separated by spaces"
 	
-	i <- inputElements 3
+	l <- getLine
+	x <- return $ tokenizeWS l
 	
-	case i of
-		Right [trainid :: TrainId, carid :: CarId, seatid :: SeatId] -> do --FIXME unfortunately it does not work like that
-			r <- return $ individualReservations appdata trainid carid seatid
+	putStrLn ""
+	
+	case x of
+		[trainid, carid, seatid] -> do
+			y <- return (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatid :: Maybe SeatId)
+			case y of
+				(Just trainid, Just carid, Just seatid) -> do
+					z <- return $ individualReservations appdata trainid carid seatid
 			
-			case r of
-				Left error -> putStrLn error
-					--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-					--mShowIndividualReservations appdata
-				Right reservations -> do
-					putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":"
-					putStrLn $ show reservations
-		
-		e -> inputElementsNonfit e
+					case z of
+						Left error -> putStrLn error
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right reservations -> do
+							putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":"
+							putStrLn $ show reservations
+
+				e -> wrongTypes e
+			
+		e -> wrongArgumentCount e
+	
+	wait
+
+
+--output error message in case of wrong types
+wrongTypes :: a -> IO ()
+wrongTypes e = do
+	putStrLn "At Least One Input Argument of Wrong Type"
+	mainBack
+
+--output error message in case of wrong count of arguments
+wrongArgumentCount :: a -> IO ()
+wrongArgumentCount e = do
+	putStrLn "Wrong Count of Input Arguments"
+	mainBack
+
+mainBack :: IO ()
+mainBack = putStrLn "Returning to Main Menu"
+
+--wait for user input to continue
+wait :: IO ()
+wait = do
+	putStr "\nPress any key to continue..."
+	getLine
+	return ()
 
 
 {---------- Input Unpacking ----------}
 
-{-
-testI i = case i of
-	Right [trainid :: TrainId, carid :: CarId, seatid :: SeatId] -> do --FIXME unfortunately it does not work like that
-		putStrLn "passt"
-	
-	e -> inputElementsNonfit e
+{- example on how to read several different types from a single string
+readbound :: IO ()
+readbound = do
+	l <- getLine
+	x <- return $ tokenizeWS l
+	case x of
+		[a,b] -> do
+			r <- return (maybeReadTWS a :: Maybe Integer, maybeReadTWS b :: Maybe Int)
+			case r of
+				(Just ja, Just jb) -> putStrLn $ "Ok, Integer a: " ++ show ja ++ " and Int b: " ++ show jb
+
+				_ -> putStrLn "at least one wrong type"
+			
+		_ -> putStrLn "wrong argument count"
 -}
 
---handle cases where returns of inputElements could not be mapped to according elements
---this must be preceded by a correct handling Right x case
-inputElementsNonfit :: Either String b -> IO ()
-inputElementsNonfit i = case i of
-	Left x -> do
-		putStrLn x
-		putStrLn "Returning to Main Menu"
-	
-	Right _ -> do
-		putStrLn "Input Arguments of wrong type"
-		putStrLn "Returning to Main Menu"
-
---reads in the given count of elements from a line in stdin
---eror messages get printed out
---FIXME how to error-safe unpack data at caller without yet knowing which types it will unpack to?
-inputElements :: Read a => Integer -> IO (Either String [a])
-inputElements c = do
-	line <- getLine
-	elements <- return $ getSubs c line
-	case elements of
-		Just xs -> return $ Right $ map read xs
-		Nothing -> return $ Left $ "Could not read in the " ++ show c ++ " wanted elements"
-			--putStrLn "please input correct number of elements" >>= inputElements c --TODO exit strategy?
-
---reads in the given count of elements from the given String
---spaces separate substrings
-getSubs :: Integer -> String -> Maybe [String]
-getSubs c xs
-	| length' (tokenize xs) == c = Just $ tokenize xs
-	| otherwise = Nothing
+--read in the String to the wanted type
+--if not fitting to that type, returns Nothing
+--leading and trailing whitespaces are ignored (leading already by function reads)
+maybeReadTWS :: Read a => String -> Maybe a
+maybeReadTWS = fmap fst . listToMaybe . filter (null . dropWhile isSpace . snd) . reads
 
 --splits the given String into substrings
---spaces separate substrings
-tokenize :: String -> [String]
-tokenize xs
+--spaces separate substrings and are thrown away
+tokenizeWS :: String -> [String]
+tokenizeWS xs
 	| null noleading = []
-	| otherwise = current : tokenize rest
+	| otherwise = current : tokenizeWS rest
 	where
-		noleading = dropWhile (==' ') xs
-		current = takeWhile (/=' ') noleading
-		rest = dropWhile (/=' ') noleading
-
---maybeRead :: 
---maybeRead = fmap fst . listToMaybe . reads
+		noleading = dropWhile isSpace xs
+		current = takeWhile (not . isSpace) noleading
+		rest = dropWhile (not . isSpace) noleading
 
 
 {---------- Real Working Functions ----------}
