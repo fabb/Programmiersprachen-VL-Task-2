@@ -545,6 +545,9 @@ getTrainId = fst
 getCars :: Train -> Cars
 getCars = snd
 
+getTrainIds :: Trains -> [TrainId]
+getTrainIds trains = map getTrainId trains
+
 --type Car = (CarId, Seats)
 getCarId :: Car -> CarId
 getCarId = fst
@@ -552,10 +555,15 @@ getCarId = fst
 getSeats :: Car -> Seats
 getSeats = snd
 
+getCarIds :: Cars -> [CarId]
+getCarIds cars = map getCarId cars
+
 --type Seat = SeatId
 getSeatId :: Seat -> SeatId
 getSeatId = id
 
+getSeatIds :: Seats -> [SeatId]
+getSeatIds seats = map getSeatId seats
 
 
 getTrain :: TrainId -> Trains -> Maybe Train
@@ -564,8 +572,14 @@ getTrain tId trains = find (\ t -> getTrainId t == tId) trains
 getCar :: CarId -> Train -> Maybe Car
 getCar cId train = find (\ c -> getCarId c == cId) $ getCars train
 
+getTrainCar :: TrainId -> CarId -> Trains -> Maybe Car
+getTrainCar tId cId trains = getTrain tId trains >>= getCar cId
+
 getSeat :: SeatId -> Car -> Maybe Seat
 getSeat sId car = find (\ s -> getSeatId s == sId) $ getSeats car
+
+getTrainCarSeat :: TrainId -> CarId -> SeatId -> Trains -> Maybe Seat
+getTrainCarSeat tId cId sId trains = getTrain tId trains >>= getCar cId >>= getSeat sId
 
 
 existsTrain :: TrainId -> Trains -> Bool
