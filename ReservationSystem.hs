@@ -654,39 +654,6 @@ printMenu = putStrLn "\nYour Options:\n\
 -}
 
 
-{---------- Maybe Error Handling ----------}
-
---do the Maybe stuff, if the result is nothing print out the given error message and return the unchanged input data
---maybeDo :: ApplicationData -> (ApplicationData -> Maybe ApplicationData) -> String -> IO ApplicationData
-maybeDo :: a -> (a -> Maybe a) -> String -> IO a
-maybeDo d f error = do
-	-- maybe more elegant with fromMaybe
-	newD <- return $ f d
-	case newD of
-		Nothing -> do
-			putStrLn error
-			return d
-		
-		Just j -> return j
-
-
-{---------- Either Error Handling ----------}
-
---in the Either Monad, the Left value is the error value which will stick and not be overwritten in a row of >>=
---the Right value is the useful data which gets passed to the next Either function
-
---do the Either stuff, a Left (error) value will stick and print out in the end
-eitherDo :: a -> (a -> Either String a) -> IO a
-eitherDo d f = do
-	newD <- return $ f d
-	case newD of
-		Left x -> do
-			putStrLn x
-			return d
-		
-		Right y -> return y
-
-
 {---------- XML Handling ----------}
 
 --write the zipper data to xml
