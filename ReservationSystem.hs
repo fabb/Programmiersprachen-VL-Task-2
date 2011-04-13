@@ -211,8 +211,9 @@ mNewIndividualReservation appdata = do
 							putStrLn error
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-						Right newAppdata -> do
+						Right (newAppdata, resnum) -> do
 							putStrLn $ "Successfully added new Individual Reservation from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
+							putStrLn $ "Reservation Number: " ++ show resnum
 							return newAppdata
 
 				e -> wrongTypes e >> return appdata
@@ -248,8 +249,9 @@ mNewGroupReservation appdata = do
 							putStrLn error
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-						Right newAppdata -> do
+						Right (newAppdata, resnum) -> do
 							putStrLn $ "Successfully added new Group Reservation for " ++ show seatcount ++ " Persons from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid
+							putStrLn $ "Reservation Number: " ++ show resnum
 							return newAppdata
 
 				e -> wrongTypes e >> return appdata
@@ -475,10 +477,11 @@ tokenizeWS xs
 --TODO here is work to do
 
 --issues a new individual reservation when there is enough place left
-newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> Either String ApplicationData
+newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> Either String (ApplicationData, ReservationNumber)
 newIndividualReservation appdata startstation endstation trainid carid seatid = do
 	newData1 <- return $ incIssuedReservations appdata
-	newIR <- return $ IndividualReservation (getIssuedReservations newData1) (startstation, endstation, trainid, carid, seatid)
+	resnum <- return $ getIssuedReservations newData1
+	newIR <- return $ IndividualReservation resnum (startstation, endstation, trainid, carid, seatid)
 	case isReservationPossible appdata newIR of
 		Left x -> Left x
 		Right _ -> do
@@ -486,13 +489,14 @@ newIndividualReservation appdata startstation endstation trainid carid seatid = 
 			mrz <- return $ reservationNewLast newIR rz
 			case mrz of
 				Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
-				Just newData2 -> return $ setReservationZipper newData1 newData2
+				Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --issues a new group reservation when there is enough place left
-newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String ApplicationData
+newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String (ApplicationData, ReservationNumber)
 newGroupReservation appdata startstation endstation trainid carid seatcount = do
 	newData1 <- return $ incIssuedReservations appdata
-	newGR <- return $ GroupReservation (getIssuedReservations newData1) (startstation, endstation, trainid, carid, seatcount)
+	resnum <- return $ getIssuedReservations newData1
+	newGR <- return $ GroupReservation resnum (startstation, endstation, trainid, carid, seatcount)
 	case isReservationPossible appdata newGR of
 		Left x -> Left x
 		Right _ -> do
@@ -500,7 +504,7 @@ newGroupReservation appdata startstation endstation trainid carid seatcount = do
 			mrz <- return $ reservationNewLast newGR rz
 			case mrz of
 				Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
-				Just newData2 -> return $ setReservationZipper newData1 newData2
+				Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --deletes the reservation with the given reservation number
 deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
