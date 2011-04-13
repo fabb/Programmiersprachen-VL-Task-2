@@ -704,6 +704,70 @@ showReservations :: [RItem] -> String
 showReservations = concatMap ((++"\n") . show)
 
 
+filterTrain :: TrainId -> [RItem] -> [RItem]
+filterTrain trainid = filter (\ r -> getRTrainId r == trainid)
+
+filterCar :: CarId -> [RItem] -> [RItem]
+filterCar carid = filter (\ r -> getRCarId r == carid)
+
+filterTrainCar :: TrainId -> CarId -> [RItem] -> [RItem]
+filterTrainCar trainid carid = filterCar carid . filterTrain trainid
+
+--only returns Individual Reservations as Group Reservations have no SeatId
+filterSeat :: SeatId -> [RItem] -> [RItem]
+filterSeat seatid = filter (\ r -> fromJust (getRSeatId r) == seatid) . filterIndividualReservations
+
+filterTrainCarSeat :: TrainId -> CarId -> SeatId -> [RItem] -> [RItem]
+filterTrainCarSeat trainid carid seatid = filterSeat seatid . filterCar carid . filterTrain trainid
+
+
+filterGroupReservations :: [RItem] -> [RItem]
+filterGroupReservations = filter isGroupReservation
+
+filterIndividualReservations :: [RItem] -> [RItem]
+filterIndividualReservations = filter isIndividualReservation
+
+
+{---------- Access RItem Read-Only ----------}
+
+isGroupReservation :: RItem -> Bool
+isGroupReservation (GroupReservation _ _) = True
+isGroupReservation _ = False
+
+isIndividualReservation :: RItem -> Bool
+isIndividualReservation (IndividualReservation _ _) = True
+isIndividualReservation _ = False
+
+
+getRReservationNumber :: RItem -> ReservationNumber
+getRReservationNumber (IndividualReservation resnum _) = resnum
+getRReservationNumber (GroupReservation resnum _) = resnum
+
+getRFromStationId :: RItem -> FromStation
+getRFromStationId (IndividualReservation _ (fromstationid,_,_,_,_)) = fromstationid
+getRFromStationId (GroupReservation _ (fromstationid,_,_,_,_)) = fromstationid
+
+getRToStationId :: RItem -> ToStation
+getRToStationId (IndividualReservation _ (_,tostationid,_,_,_)) = tostationid
+getRToStationId (GroupReservation _ (_,tostationid,_,_,_)) = tostationid
+
+getRTrainId :: RItem -> TrainId
+getRTrainId (IndividualReservation _ (_,_,trainid,_,_)) = trainid
+getRTrainId (GroupReservation _ (_,_,trainid,_,_)) = trainid
+
+getRCarId :: RItem -> CarId
+getRCarId (IndividualReservation _ (_,_,_,carid,_)) = carid
+getRCarId (GroupReservation _ (_,_,_,carid,_)) = carid
+
+getRSeatId :: RItem -> Maybe SeatId
+getRSeatId (IndividualReservation _ (_,_,_,_,seatid)) = Just seatid
+getRSeatId (GroupReservation _ _) = Nothing
+
+getRSeatCount :: RItem -> Maybe SeatCount
+getRSeatCount (GroupReservation _ (_,_,_,_,seatcount)) = Just seatcount
+getRSeatCount (IndividualReservation _ _) = Nothing
+
+
 {---------- Zipper Stuff ----------}
 
 --creates a zipper from a list of reservations
