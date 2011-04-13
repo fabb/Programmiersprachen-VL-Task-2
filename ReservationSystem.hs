@@ -82,7 +82,7 @@ type GroupReservationData = (FromStation, ToStation, TrainId, CarId, SeatCount)
 type IndividualReservationData = (FromStation, ToStation, TrainId, CarId, SeatId)
 
 data RItem = GroupReservation ReservationNumber GroupReservationData
-             | IndividualReservation ReservationNumber IndividualReservationData deriving (Show)
+             | IndividualReservation ReservationNumber IndividualReservationData
 type RCrumb = RItem 
 
 
@@ -648,6 +648,25 @@ getSeatCountCar car = length' $ getSeats car
 length' :: [a] -> Integer
 length' (x:xs) = 1 + length' xs
 length' [] = 0
+
+
+{---------- Access [RItem] Read-Only ----------}
+
+instance Show RItem where
+	show (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount)) =
+		"Group Reservation - Reservation Number " ++ show resnum ++
+		" - " ++ show seatcount ++ " Persons" ++
+		" - from Station " ++ show fromstation ++ " to " ++ show tostation ++
+		" - in Train " ++ show trainid ++ ", Car " ++ show carid
+	show (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid)) =
+		"Individual Reservation - Reservation Number " ++ show resnum ++
+		" - from Station " ++ show fromstation ++ " to " ++ show tostation ++
+		" - in Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
+
+--convert a reservation list into a better readable String
+--TODO this could be its own data which its own instance Show, but that would also need a constructor
+showReservations :: [RItem] -> String
+showReservations = concatMap ((++"\n") . show)
 
 
 {---------- Print Output ----------}
