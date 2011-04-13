@@ -149,6 +149,41 @@ mainloop appData = do
 				mainloop appData
 
 
+{---------- Print Output ----------}
+
+printDummy input = putStrLn $ "You pressed key " ++ input
+
+--prints a welcome message when starting the application
+printWelcome :: IO ()
+printWelcome = putStrLn "Welcome to the >Management Application for Train Reservation And Information Navigation< (Ma_Train)\n"
+
+--prints a goodbye message when ending the application
+printGoodbye :: IO ()
+printGoodbye = putStrLn "\nWe wish you a nice day."
+
+
+--prints the available main menu operations	
+printMenu :: IO ()
+printMenu = putStrLn "\nYour Options:\n\
+                     \ (a) New individual reservation\n\
+                     \ (s) New group reservation\n\
+                     \ (y) Delete reservation\n\
+                     \ (r) Show train stations, trains, train cars, and seats\n\
+                     \ (d) Show group reservations\n\
+                     \ (f) Show free seat count\n\
+                     \ (g) Show individual reservations\n\
+                     \ (q) Quit Ma_Train and save reservations to disk"
+{-
+	new individual reservation needs as input FROM, TO, TRAIN, CAR, COUNT
+	new group reservation needs as input FROM, TO, TRAIN, CAR, SEAT
+	Delete reservation needs as input RESERVATIONNUMBER
+	Show train stations, trains, train cars, and seats needs no input
+	Show group reservations needs as input TRAIN, CAR
+	Show free seat count needs as input TRAIN, CAR, FROM, TO
+	Show individual reservations needs as input TRAIN, CAR, SEAT
+-}
+
+
 {---------- Menu Option Navigation ----------}
 
 --dialog for issuing a new individual reservation
@@ -309,39 +344,6 @@ mShowGroupReservations appdata = do
 	
 	wait
 
---show free seat count
---needs as input TRAIN, CAR, FROM, TO
-mShowFreeSeats :: ApplicationData -> IO ()
-mShowFreeSeats appdata = do
-	putStrLn $ "Show Free Seat Count\n"
-
-	putStrLn $ "Please input Train-ID, Car-ID, Starting-Station-ID and Destination-Station-ID separated by spaces"
-	
-	l <- getLine
-	x <- return $ tokenizeWS l
-	
-	putStrLn ""
-	
-	case x of
-		[trainid, carid, startstation, endstation] -> do
-			y <- return (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId)
-			case y of
-				(Just trainid, Just carid, Just startstation, Just endstation) -> do
-					z <- return $ freeSeats appdata trainid carid startstation endstation
-			
-					case z of
-						Left error -> putStrLn error
-							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-						Right seats -> do
-							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
-							putStrLn $ show seats
-
-				e -> wrongTypes e
-			
-		e -> wrongArgumentCount e
-	
-	wait
-
 --show individual reservations
 --needs as input TRAIN, CAR, SEAT
 mShowIndividualReservations :: ApplicationData -> IO ()
@@ -368,6 +370,39 @@ mShowIndividualReservations appdata = do
 						Right reservations -> do
 							putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":"
 							putStrLn $ show reservations
+
+				e -> wrongTypes e
+			
+		e -> wrongArgumentCount e
+	
+	wait
+
+--show free seat count
+--needs as input TRAIN, CAR, FROM, TO
+mShowFreeSeats :: ApplicationData -> IO ()
+mShowFreeSeats appdata = do
+	putStrLn $ "Show Free Seat Count\n"
+
+	putStrLn $ "Please input Train-ID, Car-ID, Starting-Station-ID and Destination-Station-ID separated by spaces"
+	
+	l <- getLine
+	x <- return $ tokenizeWS l
+	
+	putStrLn ""
+	
+	case x of
+		[trainid, carid, startstation, endstation] -> do
+			y <- return (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId)
+			case y of
+				(Just trainid, Just carid, Just startstation, Just endstation) -> do
+					z <- return $ freeSeats appdata trainid carid startstation endstation
+			
+					case z of
+						Left error -> putStrLn error
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right seats -> do
+							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
+							putStrLn $ show seats
 
 				e -> wrongTypes e
 			
@@ -483,13 +518,13 @@ deleteReservation appdata reservationnumber = do
 groupReservations :: ApplicationData -> TrainId -> CarId -> Either String [(ReservationNumber,SeatCount,FromStation,ToStation)]
 groupReservations appdata trainid carid = {- Left "Could not do anything" -} Right [(1,2,3,4)] --FIXME
 
---calculates minimum free seat count in given Train Car between given Stations
-freeSeats :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Either String SeatCount
-freeSeats appdata trainid carid startstation endstation = {- Left "Could not do anything" -} Right 10 --FIXME
-
 --calculates individual reservations for the given seat (in the given car (which is part of the given train))
 individualReservations :: ApplicationData -> TrainId -> CarId -> SeatId -> Either String [IndividualReservationData]
 individualReservations appData train car seat = {- Left "Could not do anything" -} Right [(1,10,1,1,1)] --FIXME
+
+--calculates minimum free seat count in given Train Car between given Stations
+freeSeats :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Either String SeatCount
+freeSeats appdata trainid carid startstation endstation = {- Left "Could not do anything" -} Right 10 --FIXME
 
 
 {---------- Check Reservation Possibility ----------}
@@ -669,39 +704,64 @@ showReservations :: [RItem] -> String
 showReservations = concatMap ((++"\n") . show)
 
 
-{---------- Print Output ----------}
+{---------- Zipper Stuff ----------}
 
-printDummy input = putStrLn $ "You pressed key " ++ input
+--creates a zipper from a list of reservations
+makeRZipper :: [RItem] -> ReservationZipper
+makeRZipper xs = (xs, [])
 
---prints a welcome message when starting the application
-printWelcome :: IO ()
-printWelcome = putStrLn "Welcome to the >Management Application for Train Reservation And Information Navigation< (Ma_Train)\n"
+--unpacks the zipper back to a list of reservations
+unpackRZipper :: ReservationZipper -> [RItem]
+unpackRZipper z = maybe [] fst $ goFirst z
 
---prints a goodbye message when ending the application
-printGoodbye :: IO ()
-printGoodbye = putStrLn "\nWe wish you a nice day."
+--forwards for one item
+goForward :: ReservationZipper -> Maybe ReservationZipper
+goForward (x:xs, bs) = Just (xs, x:bs)
+goForward ([], _) = Nothing
 
+--rewinds to the previous item
+goBack :: ReservationZipper -> Maybe ReservationZipper
+goBack (xs, b:bs) = Just (b:xs, bs)
+goBack (_, []) = Nothing
 
---prints the available main menu operations	
-printMenu :: IO ()
-printMenu = putStrLn "\nYour Options:\n\
-                     \ (a) New individual reservation\n\
-                     \ (s) New group reservation\n\
-                     \ (y) Delete reservation\n\
-                     \ (r) Show train stations, trains, train cars, and seats\n\
-                     \ (d) Show group reservations\n\
-                     \ (f) Show free seat count\n\
-                     \ (g) Show individual reservations\n\
-                     \ (q) Quit Ma_Train and save reservations to disk"
-{-
-	new individual reservation needs as input FROM, TO, TRAIN, CAR, COUNT
-	new group reservation needs as input FROM, TO, TRAIN, CAR, SEAT
-	Delete reservation needs as input RESERVATIONNUMBER
-	Show train stations, trains, train cars, and seats needs no input
-	Show group reservations needs as input TRAIN, CAR
-	Show free seat count needs as input TRAIN, CAR, FROM, TO
-	Show individual reservations needs as input TRAIN, CAR, SEAT
--}
+--rewinds to the first item
+goFirst :: ReservationZipper -> Maybe ReservationZipper
+goFirst z@(xs, b:bs) = goBack z >>= goFirst
+goFirst z@(_, []) = Just z
+
+--forwards until after the last item
+goLast :: ReservationZipper -> Maybe ReservationZipper
+goLast z@(x:xs, bs) = goForward z >>= goLast
+goLast z@([], _) = Just z
+
+--sets the current item to the one with the given number
+reservationTo :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
+reservationTo resnum z@(xs, bs) = do
+	(items, _) <- goFirst z
+	(ls, item:rs) <- return $ break (reservationIs resnum) items
+	return (item:rs, reverse ls) --TODO better without break but with recursive goForward?
+
+--True when the given item has the given reservation number
+reservationIs :: ReservationNumber -> RItem -> Bool
+reservationIs resnum (GroupReservation reservationNumber _)      = resnum == reservationNumber
+reservationIs resnum (IndividualReservation reservationNumber _) = resnum == reservationNumber
+
+--inserts a new reservation before the current item
+reservationNew :: RItem -> ReservationZipper -> Maybe ReservationZipper
+reservationNew item (xs, bs) = Just (item:xs, bs)
+
+--inserts a new reservation as last item
+reservationNewLast :: RItem -> ReservationZipper -> Maybe ReservationZipper
+reservationNewLast item z = goLast z >>= reservationNew item
+
+--delete the current item
+reservationDeleteCurrent :: ReservationZipper -> Maybe ReservationZipper
+reservationDeleteCurrent (x:xs, bs) = return (xs, bs)
+reservationDeleteCurrent ([], _) = Nothing
+
+--deletes the reservation with the given number
+reservationDelete :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
+reservationDelete resnum z = reservationTo resnum z >>= reservationDeleteCurrent
 
 
 {---------- XML Handling ----------}
@@ -869,63 +929,3 @@ xpGroupReservation = xpElem "group_reservation" $
 				(xpElem "train" xpPrim)
 				(xpElem "car" xpPrim)
 				(xpElem "count" xpPrim)
-
-
-{---------- Zipper Stuff ----------}
-
---creates a zipper from a list of reservations
-makeRZipper :: [RItem] -> ReservationZipper
-makeRZipper xs = (xs, [])
-
---unpacks the zipper back to a list of reservations
-unpackRZipper :: ReservationZipper -> [RItem]
-unpackRZipper z = maybe [] fst $ goFirst z
-
---forwards for one item
-goForward :: ReservationZipper -> Maybe ReservationZipper
-goForward (x:xs, bs) = Just (xs, x:bs)
-goForward ([], _) = Nothing
-
---rewinds to the previous item
-goBack :: ReservationZipper -> Maybe ReservationZipper
-goBack (xs, b:bs) = Just (b:xs, bs)
-goBack (_, []) = Nothing
-
---rewinds to the first item
-goFirst :: ReservationZipper -> Maybe ReservationZipper
-goFirst z@(xs, b:bs) = goBack z >>= goFirst
-goFirst z@(_, []) = Just z
-
---forwards until after the last item
-goLast :: ReservationZipper -> Maybe ReservationZipper
-goLast z@(x:xs, bs) = goForward z >>= goLast
-goLast z@([], _) = Just z
-
---sets the current item to the one with the given number
-reservationTo :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
-reservationTo resnum z@(xs, bs) = do
-	(items, _) <- goFirst z
-	(ls, item:rs) <- return $ break (reservationIs resnum) items
-	return (item:rs, reverse ls) --TODO better without break but with recursive goForward?
-
---True when the given item has the given reservation number
-reservationIs :: ReservationNumber -> RItem -> Bool
-reservationIs resnum (GroupReservation reservationNumber _)      = resnum == reservationNumber
-reservationIs resnum (IndividualReservation reservationNumber _) = resnum == reservationNumber
-
---inserts a new reservation before the current item
-reservationNew :: RItem -> ReservationZipper -> Maybe ReservationZipper
-reservationNew item (xs, bs) = Just (item:xs, bs)
-
---inserts a new reservation as last item
-reservationNewLast :: RItem -> ReservationZipper -> Maybe ReservationZipper
-reservationNewLast item z = goLast z >>= reservationNew item
-
---delete the current item
-reservationDeleteCurrent :: ReservationZipper -> Maybe ReservationZipper
-reservationDeleteCurrent (x:xs, bs) = return (xs, bs)
-reservationDeleteCurrent ([], _) = Nothing
-
---deletes the reservation with the given number
-reservationDelete :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
-reservationDelete resnum z = reservationTo resnum z >>= reservationDeleteCurrent
