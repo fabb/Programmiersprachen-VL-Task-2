@@ -477,30 +477,30 @@ tokenizeWS xs
 --issues a new individual reservation when there is enough place left
 newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> Either String ApplicationData
 newIndividualReservation appdata startstation endstation trainid carid seatid = do
-	newData <- return $ incIssuedReservations appdata
-	newIR <- return $ IndividualReservation (getIssuedReservations appdata) (startstation, endstation, trainid, carid, seatid)
+	newData1 <- return $ incIssuedReservations appdata
+	newIR <- return $ IndividualReservation (getIssuedReservations newData1) (startstation, endstation, trainid, carid, seatid)
 	case isReservationPossible appdata newIR of
 		Left x -> Left x
 		Right _ -> do
-			rz <- return $ getReservationZipper appdata
+			rz <- return $ getReservationZipper newData1
 			mrz <- return $ reservationNewLast newIR rz
 			case mrz of
 				Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
-				Just newData -> return $ setReservationZipper appdata newData
+				Just newData2 -> return $ setReservationZipper newData1 newData2
 
 --issues a new group reservation when there is enough place left
 newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String ApplicationData
 newGroupReservation appdata startstation endstation trainid carid seatcount = do
-	newData <- return $ incIssuedReservations appdata
-	newGR <- return $ GroupReservation (getIssuedReservations appdata) (startstation, endstation, trainid, carid, seatcount)
+	newData1 <- return $ incIssuedReservations appdata
+	newGR <- return $ GroupReservation (getIssuedReservations newData1) (startstation, endstation, trainid, carid, seatcount)
 	case isReservationPossible appdata newGR of
 		Left x -> Left x
 		Right _ -> do
-			rz <- return $ getReservationZipper appdata
+			rz <- return $ getReservationZipper newData1
 			mrz <- return $ reservationNewLast newGR rz
 			case mrz of
 				Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
-				Just newData -> return $ setReservationZipper appdata newData
+				Just newData2 -> return $ setReservationZipper newData1 newData2
 
 --deletes the reservation with the given reservation number
 deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
