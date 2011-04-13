@@ -338,7 +338,7 @@ mShowGroupReservations appdata = do
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right groupreservations -> do
 							putStrLn $ "The following group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ":"
-							putStrLn $ show groupreservations
+							putStrLn $ showReservations groupreservations
 
 				e -> wrongTypes e
 			
@@ -371,7 +371,7 @@ mShowIndividualReservations appdata = do
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right reservations -> do
 							putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":"
-							putStrLn $ show reservations
+							putStrLn $ showReservations reservations
 
 				e -> wrongTypes e
 			
@@ -519,12 +519,30 @@ deleteReservation appdata reservationnumber = do
 		Just x -> Right $ setReservationZipper appdata x
 
 --calculates group reservations for given Train Car
-groupReservations :: ApplicationData -> TrainId -> CarId -> Either String [(ReservationNumber,SeatCount,FromStation,ToStation)]
-groupReservations appdata trainid carid = {- Left "Could not do anything" -} Right [(1,2,3,4)] --FIXME
+groupReservations :: ApplicationData -> TrainId -> CarId -> Either String [RItem]
+groupReservations appdata trainid carid = do
+	trains <- return $ getTrains appdata
+	case existsTrain trainid trains of
+		True -> case existsTrainCar trainid carid trains of
+			True -> do
+				res <- return $ unpackRZipper $ getReservationZipper appdata
+				return $ filterTrainCar trainid carid $ filterGroupReservations res
+			False -> Left "Error: No such Car-ID attached to existing Train-ID"
+		False -> Left "Error: No such Train-ID"
 
 --calculates individual reservations for the given seat (in the given car (which is part of the given train))
-individualReservations :: ApplicationData -> TrainId -> CarId -> SeatId -> Either String [IndividualReservationData]
-individualReservations appData train car seat = {- Left "Could not do anything" -} Right [(1,10,1,1,1)] --FIXME
+individualReservations :: ApplicationData -> TrainId -> CarId -> SeatId -> Either String [RItem]
+individualReservations appdata trainid carid seatid = do
+	trains <- return $ getTrains appdata
+	case existsTrain trainid trains of
+		True -> case existsTrainCar trainid carid trains of
+			True -> case existsTrainCarSeat trainid carid seatid trains of
+				True -> do
+					res <- return $ unpackRZipper $ getReservationZipper appdata
+					return $ filterTrainCarSeat trainid carid seatid $ filterIndividualReservations res --filterIndividualReservations wouldn't be necessary as filterTrainCarSeat already does that
+				False -> Left "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
+			False -> Left "Error: No such Car-ID attached to existing Train-ID"
+		False -> Left "Error: No such Train-ID"
 
 --calculates minimum free seat count in given Train Car between given Stations
 freeSeats :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Either String SeatCount
@@ -536,6 +554,7 @@ freeSeats appdata trainid carid startstation endstation = {- Left "Could not do 
 --TODO
 
 --calculates whether the given, not yet issued, reservation is possible
+--also checks whether StartStation and EndStation are valid
 --Bool does not hold any information
 isReservationPossible :: ApplicationData -> RItem -> Either String Bool
 
