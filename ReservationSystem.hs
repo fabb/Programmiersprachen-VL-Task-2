@@ -336,9 +336,11 @@ mShowGroupReservations appdata = do
 					case z of
 						Left error -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-						Right groupreservations -> do
-							putStrLn $ "The following group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ":"
-							putStrLn $ showReservations groupreservations
+						Right groupreservations -> if isREmpty groupreservations
+							then putStrLn $ "NO group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid
+							else do
+								putStrLn $ "The following group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ":"
+								putStrLn $ showReservations groupreservations
 
 				e -> wrongTypes e
 			
@@ -369,9 +371,11 @@ mShowIndividualReservations appdata = do
 					case z of
 						Left error -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
-						Right reservations -> do
-							putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":"
-							putStrLn $ showReservations reservations
+						Right individualreservations -> if isREmpty individualreservations
+							then putStrLn $ "NO individual reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
+							else do
+								putStrLn $ "The following individual reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":"
+								putStrLn $ showReservations individualreservations
 
 				e -> wrongTypes e
 			
@@ -749,6 +753,10 @@ filterGroupReservations = filter isGroupReservation
 
 filterIndividualReservations :: [RItem] -> [RItem]
 filterIndividualReservations = filter isIndividualReservation
+
+
+isREmpty :: [RItem] -> Bool
+isREmpty = null
 
 
 {---------- Access RItem Read-Only ----------}
