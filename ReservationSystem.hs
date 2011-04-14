@@ -78,6 +78,7 @@ type FromStation = StationId
 type ToStation = StationId
 type SeatCount = Integer
 
+--Reservations do not contain date for simplifications purposes. a Train is assumed to only pull out the route once
 type GroupReservationData = (FromStation, ToStation, TrainId, CarId, SeatCount)
 type IndividualReservationData = (FromStation, ToStation, TrainId, CarId, SeatId)
 
@@ -306,10 +307,10 @@ mShowTrains appdata = do
 	putStrLn $ "Show Trains and Stations\n"
 
 	putStrLn $ "Stations:"	
-	putStrLn $ show $ getStations appdata --TODO if Station was a data type, it could have a nice instance Show
+	putStrLn $ showStations $ getStations appdata --TODO if Station was a data type, it could have a nice instance Show
 	putStrLn ""
 	putStrLn $ "Trains:"	
-	putStrLn $ show $ getTrains appdata --TODO if Train was a data type, it could have a nice instance Show
+	putStrLn $ showTrains $ getTrains appdata --TODO if Train was a data type, it could have a nice instance Show
 	
 	wait
 
@@ -601,6 +602,10 @@ incIssuedReservations appdata = setIssuedReservations appdata $ 1 + getIssuedRes
 
 {---------- Access Stations ADT ----------}
 
+showStations :: Stations -> String
+showStations (x:y:xs) = show x ++ " - " ++ showStations (y:xs)
+showStations (x:xs) = show x
+
 --could also be dependent of Train if it does not stop in all Stations, not implemented for simplification reasons
 getStationsBetween :: FromStation -> ToStation -> Stations -> Maybe [Station]
 getStationsBetween = takeRange
@@ -630,6 +635,25 @@ takeWhileInclusive p (x:xs)
 
 
 {---------- Access Trains ADT ----------}
+
+showTrains :: Trains -> String
+showTrains = concatMap ((++"\n") . showTrain)
+
+showTrain :: Train -> String
+showTrain train = "Train " ++ show (getTrainId train) ++ ": " ++ showCars (getCars train)
+
+showCars :: Cars -> String
+showCars = concatMap showCar
+
+showCar :: Car -> String
+showCar car = "\n\tCar " ++ show (getCarId car) ++ ": " ++ showSeats (getSeats car)
+
+showSeats :: Seats -> String
+showSeats seats = "Seats: " ++ showSeat (head seats) ++ concatMap ((" - " ++) . showSeat) (tail seats)
+
+showSeat :: Seat -> String
+showSeat = show . getSeatId
+
 
 --type Train = (TrainId, Cars)
 getTrainId :: Train -> TrainId
