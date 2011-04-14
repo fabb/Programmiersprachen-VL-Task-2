@@ -783,6 +783,27 @@ isREmpty :: [RItem] -> Bool
 isREmpty = null
 
 
+--gets all given reservations which are active between the given stations
+filterActiveBetween :: FromStation -> ToStation -> Stations -> [RItem] -> [RItem]
+filterActiveBetween fromstation tostation stations = filter (fromMaybe False . (isActiveBetween fromstation tostation stations))
+
+
+--gets the used seat count (from Group and Individual Reservations) between the given stations in the given Train
+--this is a simple sum and no minimum
+getUsedSeatCountTrain :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> SeatCount
+getUsedSeatCountTrain fromstation tostation stations trainid = sum . map getRUsedSeats . filterActiveBetween fromstation tostation stations . filterTrain trainid
+
+--gets the used seat count (from Group and Individual Reservations) between the given stations in the given Car
+--this is a simple sum and no minimum
+getUsedSeatCountTrainCar :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> SeatCount
+getUsedSeatCountTrainCar fromstation tostation stations trainid carid = sum . map getRUsedSeats . filterActiveBetween fromstation tostation stations . filterTrainCar trainid carid
+
+--gets the used seat count (from Individual Reservations) between the given stations for the given Seat
+--this is a simple sum and no minimum
+getUsedSeatCountTrainCarSeat :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> SeatCount
+getUsedSeatCountTrainCarSeat fromstation tostation stations trainid carid seatid = sum . map getRUsedSeats . filterActiveBetween fromstation tostation stations . filterTrainCarSeat trainid carid seatid
+
+
 {---------- Access RItem Read-Only ----------}
 
 isGroupReservation :: RItem -> Bool
@@ -821,6 +842,26 @@ getRSeatId (GroupReservation _ _) = Nothing
 getRSeatCount :: RItem -> Maybe SeatCount
 getRSeatCount (GroupReservation _ (_,_,_,_,seatcount)) = Just seatcount
 getRSeatCount (IndividualReservation _ _) = Nothing
+
+
+getRUsedSeats :: RItem -> SeatCount
+getRUsedSeats (GroupReservation _ (_,_,_,_,seatcount)) = seatcount
+getRUsedSeats (IndividualReservation _ _) = 1
+
+
+
+--checks whether the given reservation is active between the given stations
+isActiveBetween :: FromStation -> ToStation -> Stations -> RItem -> Maybe Bool
+isActiveBetween fromstation tostation stations ritem =
+	if fromstation == tostation
+	then Nothing
+	else isInfixOfMaybe checkstations resstations
+	where
+		resstations = getStationsBetween (getRFromStationId ritem) (getRToStationId ritem) stations --stations the reservation is active for
+		checkstations = getStationsBetween fromstation tostation stations --stations inbetween the given bounds - this must be a subset
+		--direction is important, so also compare order
+		isInfixOfMaybe (Just x) (Just y) = Just $ isInfixOf x y
+		isInfixOfMaybe _ _ = Nothing
 
 
 {---------- Zipper Stuff ----------}
