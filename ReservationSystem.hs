@@ -525,27 +525,25 @@ deleteReservation appdata reservationnumber = do
 groupReservations :: ApplicationData -> TrainId -> CarId -> Either String [RItem]
 groupReservations appdata trainid carid = do
 	trains <- return $ getTrains appdata
-	case existsTrain trainid trains of
-		True -> case existsTrainCar trainid carid trains of
-			True -> do
-				res <- return $ unpackRZipper $ getReservationZipper appdata
-				return $ filterTrainCar trainid carid $ filterGroupReservations res
-			False -> Left "Error: No such Car-ID attached to existing Train-ID"
-		False -> Left "Error: No such Train-ID"
+	if existsTrain trainid trains
+		then Right True else Left "Error: No such Train-ID"
+	if existsTrainCar trainid carid trains
+		then Right True else Left "Error: No such Car-ID attached to existing Train-ID"
+	res <- return $ unpackRZipper $ getReservationZipper appdata
+	return $ filterTrainCar trainid carid $ filterGroupReservations res
 
 --calculates individual reservations for the given seat (in the given car (which is part of the given train))
 individualReservations :: ApplicationData -> TrainId -> CarId -> SeatId -> Either String [RItem]
 individualReservations appdata trainid carid seatid = do
 	trains <- return $ getTrains appdata
-	case existsTrain trainid trains of
-		True -> case existsTrainCar trainid carid trains of
-			True -> case existsTrainCarSeat trainid carid seatid trains of
-				True -> do
-					res <- return $ unpackRZipper $ getReservationZipper appdata
-					return $ filterTrainCarSeat trainid carid seatid $ filterIndividualReservations res --filterIndividualReservations wouldn't be necessary as filterTrainCarSeat already does that
-				False -> Left "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
-			False -> Left "Error: No such Car-ID attached to existing Train-ID"
-		False -> Left "Error: No such Train-ID"
+	if existsTrain trainid trains
+		then Right True else Left "Error: No such Train-ID"
+	if existsTrainCar trainid carid trains
+		then Right True else Left "Error: No such Car-ID attached to existing Train-ID"
+	if existsTrainCarSeat trainid carid seatid trains
+		then Right True else Left "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
+	res <- return $ unpackRZipper $ getReservationZipper appdata
+	return $ filterTrainCarSeat trainid carid seatid $ filterIndividualReservations res --filterIndividualReservations wouldn't be necessary as filterTrainCarSeat already does that
 
 --calculates minimum free seat count in given Train Car between given Stations
 --if the train is so full as a whole (minimum free seats per train) that it's free seats , that value will be displayed instead
