@@ -548,8 +548,62 @@ individualReservations appdata trainid carid seatid = do
 		False -> Left "Error: No such Train-ID"
 
 --calculates minimum free seat count in given Train Car between given Stations
+--if the train is so full as a whole (minimum free seats per train) that it's free seats , that value will be displayed instead
 freeSeats :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Either String SeatCount
-freeSeats appdata trainid carid startstation endstation = {- Left "Could not do anything" -} Right 10 --FIXME
+freeSeats appdata trainid carid startstation endstation = do
+	--TODO more specific error messages, needs Either Monad output from freeSeatsCar
+
+	{-
+	trainfree <- maybe
+		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
+		Right $ freeSeatsTrain appdata trainid startstation endstation
+	-}
+
+	minfree <- maybe
+		(Left "Error: Could not get details for Train")
+		Right $ return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
+	
+	trainseatcount <- maybe
+		(Left "Error: Could not get details for Train")
+		Right $ return (getTrains appdata) >>= getSeatCountTrainId trainid
+	
+	
+	carfree <- maybe
+		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
+		Right $ freeSeatsCar appdata trainid carid startstation endstation
+	
+	return $ min carfree (trainseatcount - minfree)
+
+
+--returns the number of free seats for the given Train between the provided stations
+freeSeatsTrain :: ApplicationData -> TrainId -> FromStation -> ToStation -> Maybe Integer
+freeSeatsTrain appdata trainid fromstation tostation = do
+	stations <- return $ getStations appdata
+	trains <- return $ getTrains appdata
+	res <- return $ unpackRZipper $ getReservationZipper appdata
+	wholeseats <- getSeatCountTrainId trainid trains
+	used <- getUsedSeatCountTrainMaximum fromstation tostation stations trainid res
+	return $ wholeseats - used
+
+--returns the number of free seats for the given Train Car between the provided stations
+freeSeatsCar :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Maybe Integer
+freeSeatsCar appdata trainid carid fromstation tostation = do
+	stations <- return $ getStations appdata
+	trains <- return $ getTrains appdata
+	res <- return $ unpackRZipper $ getReservationZipper appdata
+	wholeseats <- getSeatCountTrainCarId trainid carid trains
+	used <- getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid res
+	return $ wholeseats - used
+
+--returns the number of free seats for the given Seat between the provided stations (1 or 0)
+freeSeat :: ApplicationData -> TrainId -> CarId -> SeatId -> FromStation -> ToStation -> Maybe Integer
+freeSeat appdata trainid carid seatid fromstation tostation = do
+	stations <- return $ getStations appdata
+	res <- return $ unpackRZipper $ getReservationZipper appdata
+	used <- getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid res
+	return $ 1 - used
+
+
 
 
 {---------- Check Reservation Possibility ----------}
@@ -745,6 +799,14 @@ instance SeatCountable Train where
 instance SeatCountable Car where
 	getSeatCount car = length $ getSeats car
 -}
+
+
+getSeatCountTrainId :: TrainId -> Trains -> Maybe Integer
+getSeatCountTrainId trainid trains = fmap getSeatCountTrain $ getTrain trainid trains
+
+getSeatCountTrainCarId :: TrainId -> CarId -> Trains -> Maybe Integer
+getSeatCountTrainCarId trainid carid trains = fmap getSeatCountCar $ getTrainCar trainid carid trains
+
 
 getSeatCountTrain :: Train -> Integer
 getSeatCountTrain train = sum $ map getSeatCountCar $ getCars train

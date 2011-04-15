@@ -22,6 +22,7 @@ General
 	* check with Trains and Stations?
 * clean up case chaos at "Real Working Functions"
 * make getUsedSeatCountTrain*Maximum functions more elegant
+* make freeSeats more elegant and use Either Monads instead of Maybe to get error messages from ADT functions
 
 
 Features
