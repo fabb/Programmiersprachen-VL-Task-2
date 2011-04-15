@@ -634,6 +634,25 @@ takeWhileInclusive p (x:xs)
 	| otherwise =  [x]
 
 
+--maps the function f over all inbetween stations
+mapStations :: (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> Maybe [a]
+mapStations f fromstation tostation stations = maybe Nothing (Just . map (\ (from,to) -> f from to stations)) (stationTuples fromstation tostation stations)
+
+
+--calculates tuples of stations next to each other in the given range
+stationTuples :: FromStation -> ToStation -> Stations -> Maybe [(Station,Station)]
+stationTuples fromstation tostation stations = tuples
+	where
+		stationrange = getStationsBetween fromstation tostation stations
+		tuples = maybe Nothing (Just . tuplifyNeighbors) stationrange
+
+--converts a list into a list with tuples of adjacent elements from the original list
+tuplifyNeighbors :: [a] -> [(a,a)]
+tuplifyNeighbors [] = []
+tuplifyNeighbors (x:[]) = []
+tuplifyNeighbors (x:y:xs) = (x,y) : tuplifyNeighbors (y:xs)
+
+
 {---------- Access Trains ADT ----------}
 
 showTrains :: Trains -> String
@@ -802,6 +821,38 @@ getUsedSeatCountTrainCar fromstation tostation stations trainid carid = sum . ma
 --this is a simple sum and no minimum
 getUsedSeatCountTrainCarSeat :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> SeatCount
 getUsedSeatCountTrainCarSeat fromstation tostation stations trainid carid seatid = sum . map getRUsedSeats . filterActiveBetween fromstation tostation stations . filterTrainCarSeat trainid carid seatid
+
+
+--calculates the maximum used seats for the given Train in the given Station range
+--takes care of overlapping and non-overlapping reservations
+getUsedSeatCountTrainMaximum :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> Maybe SeatCount
+getUsedSeatCountTrainMaximum fromstation tostation stations trainid ritems = maybe Nothing (Just . maximum) $ getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems
+
+--calculates the maximum used seats for the given Car in the given Station range
+--takes care of overlapping and non-overlapping reservations
+getUsedSeatCountTrainCarMaximum :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> Maybe SeatCount
+getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid ritems = maybe Nothing (Just . maximum) $ getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems
+
+--calculates the maximum used seats for the given Seat in the given Station range
+--takes care of overlapping and non-overlapping reservations
+getUsedSeatCountTrainCarSeatMaximum :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> Maybe SeatCount
+getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid ritems = maybe Nothing (Just . maximum) $ getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems
+
+
+--calculates the reservations for the given Train for all stations in the given range
+getUsedSeatCountTrainStationwise :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems = 
+	maybe Nothing (Just . map (\ f -> f trainid ritems)) (mapStations getUsedSeatCountTrain fromstation tostation stations)
+
+--calculates the reservations for the given Car for all stations in the given range
+getUsedSeatCountTrainCarStationwise :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems = 
+	maybe Nothing (Just . map (\ f -> f trainid carid ritems)) (mapStations getUsedSeatCountTrainCar fromstation tostation stations)
+
+--calculates the reservations for the given Seat for all stations in the given range
+getUsedSeatCountTrainCarSeatStationwise :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems = 
+	maybe Nothing (Just . map (\ f -> f trainid carid seatid ritems)) (mapStations getUsedSeatCountTrainCarSeat fromstation tostation stations)
 
 
 {---------- Access RItem Read-Only ----------}
