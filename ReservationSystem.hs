@@ -484,30 +484,30 @@ newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> Train
 newIndividualReservation appdata startstation endstation trainid carid seatid = do
 	newData1 <- return $ incIssuedReservations appdata
 	resnum <- return $ getIssuedReservations newData1
-	newIR <- return $ IndividualReservation resnum (startstation, endstation, trainid, carid, seatid) --FIXME make ADT function which checks parameters
-	case isReservationPossible appdata newIR of
-		Left x -> Left x
-		Right _ -> do
-			rz <- return $ getReservationZipper newData1
-			mrz <- return $ reservationNewLast newIR rz
-			case mrz of
-				Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
-				Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
+	stations <- return $ getStations appdata
+	trains <- return $ getTrains appdata
+	newIR <- newRIndividualReservation resnum (startstation, endstation, trainid, carid, seatid) stations trains
+	isReservationPossible appdata newIR
+	rz <- return $ getReservationZipper newData1
+	mrz <- return $ reservationNewLast newIR rz
+	case mrz of
+		Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
+		Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --issues a new group reservation when there is enough place left
 newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String (ApplicationData, ReservationNumber)
 newGroupReservation appdata startstation endstation trainid carid seatcount = do
 	newData1 <- return $ incIssuedReservations appdata
 	resnum <- return $ getIssuedReservations newData1
-	newGR <- return $ GroupReservation resnum (startstation, endstation, trainid, carid, seatcount) --FIXME make ADT function which checks parameters
-	case isReservationPossible appdata newGR of
-		Left x -> Left x
-		Right _ -> do
-			rz <- return $ getReservationZipper newData1
-			mrz <- return $ reservationNewLast newGR rz
-			case mrz of
-				Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
-				Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
+	stations <- return $ getStations appdata
+	trains <- return $ getTrains appdata
+	newGR <- newRGroupReservation resnum (startstation, endstation, trainid, carid, seatcount) stations trains
+	isReservationPossible appdata newGR
+	rz <- return $ getReservationZipper newData1
+	mrz <- return $ reservationNewLast newGR rz
+	case mrz of
+		Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
+		Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --deletes the reservation with the given reservation number
 deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
@@ -651,6 +651,10 @@ tuplifyNeighbors (x:[]) = []
 tuplifyNeighbors (x:y:xs) = (x,y) : tuplifyNeighbors (y:xs)
 
 
+existsStation :: StationId -> Stations -> Bool
+existsStation stationid stations = elem stationid stations
+
+
 {---------- Access Trains ADT ----------}
 
 showTrains :: Trains -> String
@@ -723,7 +727,7 @@ existsCar :: CarId -> Train -> Bool
 existsCar cId train = getCar cId train /= Nothing
 
 existsTrainCar :: TrainId -> CarId -> Trains -> Bool
-existsTrainCar tId cId train = (getTrain tId trains >>= getCar cId) /= Nothing
+existsTrainCar tId cId trains = (getTrain tId trains >>= getCar cId) /= Nothing
 
 existsSeat :: SeatId -> Car -> Bool
 existsSeat sId car = getSeat sId car /= Nothing
@@ -853,7 +857,58 @@ getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid c
 	fmap (map (\ f -> f trainid carid seatid ritems)) (mapStations getUsedSeatCountTrainCarSeat fromstation tostation stations)
 
 
-{---------- Access RItem Read-Only ----------}
+{---------- Access RItem ----------}
+
+--creates a new Individual Reservation
+--checks parameters for validity - except to ReservationNumber
+newRIndividualReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> Either String RItem
+newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = do
+	if existsStation fromstation stations then return True else Left "Error: Starting-Station-ID does not exist"
+	if existsStation tostation stations then return True else Left "Error: Destination-Station-ID does not exist"
+	if existsTrain trainid trains then return True else Left "Error: Train-ID does not exist"
+	if existsTrainCar trainid carid trains then return True else Left "Error: Car-ID does not exist"
+	if existsTrainCarSeat trainid carid seatid trains then return True else Left "Error: Seat-ID does not exist"
+	return (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid))
+{-
+newRIndividualReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> Maybe RItem
+newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = reservation
+	where
+		fromstationok = existsStation fromstation stations
+		tostationok = existsStation tostation stations
+		trainidok = existsTrain trainid trains
+		caridok = existsTrainCar trainid carid trains
+		seatidok = existsTrainCarSeat trainid carid seatid trains
+		allright = fromstationok && tostationok && trainidok && caridok && seatidok
+		reservation = if allright
+			then Just (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid))
+			else Nothing
+-}
+
+--creates a new Individual Reservation
+--checks parameters for validity - except to ReservationNumber
+newRGroupReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> Either String RItem
+newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = do
+	if existsStation fromstation stations then return True else Left "Error: Starting-Station-ID does not exist"
+	if existsStation tostation stations then return True else Left "Error: Destination-Station-ID does not exist"
+	if existsTrain trainid trains then return True else Left "Error: Train-ID does not exist"
+	if existsTrainCar trainid carid trains then return True else Left "Error: Car-ID does not exist"
+	if seatcount > 1 then return True else Left "Error: Seat-Count must be at least 2"
+	return (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
+{-
+newRGroupReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> Maybe RItem
+newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = reservation
+	where
+		fromstationok = existsStation fromstation stations
+		tostationok = existsStation tostation stations
+		trainidok = existsTrain trainid trains
+		caridok = existsTrainCar trainid carid trains
+		seatcountok = seatcount > 1
+		allright = fromstationok && tostationok && trainidok && caridok && seatcountok
+		reservation = if allright
+			then Just (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
+			else Nothing
+-}
+
 
 isGroupReservation :: RItem -> Bool
 isGroupReservation (GroupReservation _ _) = True
