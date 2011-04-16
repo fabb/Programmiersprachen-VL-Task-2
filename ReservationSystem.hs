@@ -551,26 +551,25 @@ freeSeats :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> 
 freeSeats appdata trainid carid startstation endstation = do
 	--TODO more specific error messages, needs Either Monad output from freeSeatsCar
 
-	{-
-	trainfree <- maybe
-		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
-		Right $ freeSeatsTrain appdata trainid startstation endstation
-	-}
-
 	minfree <- maybe
 		(Left "Error: Could not get details for Train")
 		Right $ return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
 	
+	{-
 	trainseatcount <- maybe
 		(Left "Error: Could not get details for Train")
 		Right $ return (getTrains appdata) >>= getSeatCountTrainId trainid
+	-}
 	
+	trainfree <- maybe
+		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
+		Right $ freeSeatsTrain appdata trainid startstation endstation
 	
 	carfree <- maybe
 		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
 		Right $ freeSeatsCar appdata trainid carid startstation endstation
 	
-	return $ min carfree (trainseatcount - minfree)
+	return $ min carfree (trainfree - minfree)
 
 
 --returns the number of free seats for the given Train between the provided stations
