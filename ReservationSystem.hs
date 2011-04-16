@@ -908,17 +908,24 @@ getUsedSeatCountTrainCarSeat fromstation tostation stations trainid carid seatid
 --calculates the maximum used seats for the given Train in the given Station range
 --takes care of overlapping and non-overlapping reservations
 getUsedSeatCountTrainMaximum :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainMaximum fromstation tostation stations trainid ritems = fmap maximum $ getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems
+getUsedSeatCountTrainMaximum fromstation tostation stations trainid ritems = maybeMaximum =<< getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems
 
 --calculates the maximum used seats for the given Car in the given Station range
 --takes care of overlapping and non-overlapping reservations
 getUsedSeatCountTrainCarMaximum :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid ritems = fmap maximum $ getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems
+getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid ritems = maybeMaximum =<< getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems
 
 --calculates the maximum used seats for the given Seat in the given Station range
 --takes care of overlapping and non-overlapping reservations
 getUsedSeatCountTrainCarSeatMaximum :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid ritems = fmap maximum $ getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems
+getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid ritems = maybeMaximum =<< getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems
+
+
+--calculates the maximum of the list
+--returns Nothing only when the list is empty
+maybeMaximum :: Ord a => [a] -> Maybe a
+maybeMaximum [] = Nothing
+maybeMaximum ls = Just $ maximum ls
 
 
 --calculates the reservations for the given Train for all stations in the given range
