@@ -708,7 +708,7 @@ takeWhileInclusive p (x:xs)
 
 --maps the function f over all inbetween stations
 mapStations :: (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> Maybe [a]
-mapStations f fromstation tostation stations = maybe Nothing (Just . map (\ (from,to) -> f from to stations)) (stationTuples fromstation tostation stations)
+mapStations f fromstation tostation stations = fmap (map (\ (from,to) -> f from to stations)) (stationTuples fromstation tostation stations)
 
 
 --calculates tuples of stations next to each other in the given range
