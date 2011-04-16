@@ -961,53 +961,26 @@ getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid c
 --checks parameters for validity - except to ReservationNumber
 newRIndividualReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> Either String RItem
 newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = do
-	if existsStation fromstation stations then return True else Left "Error: Starting-Station-ID does not exist"
-	if existsStation tostation stations then return True else Left "Error: Destination-Station-ID does not exist"
-	if fromstation /= tostation then return True else Left "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
-	if existsTrain trainid trains then return True else Left "Error: Train-ID does not exist"
-	if existsTrainCar trainid carid trains then return True else Left "Error: Car-ID does not exist"
+	checkRReservationData fromstation tostation trainid carid stations trains
 	if existsTrainCarSeat trainid carid seatid trains then return True else Left "Error: Seat-ID does not exist"
 	return (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid))
-{-
-newRIndividualReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> Maybe RItem
-newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = reservation
-	where
-		fromstationok = existsStation fromstation stations
-		tostationok = existsStation tostation stations
-		trainidok = existsTrain trainid trains
-		caridok = existsTrainCar trainid carid trains
-		seatidok = existsTrainCarSeat trainid carid seatid trains
-		allright = fromstationok && tostationok && trainidok && caridok && seatidok
-		reservation = if allright
-			then Just (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid))
-			else Nothing
--}
 
 --creates a new Individual Reservation
 --checks parameters for validity - except to ReservationNumber
 newRGroupReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> Either String RItem
 newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = do
+	checkRReservationData fromstation tostation trainid carid stations trains
+	if seatcount > 1 then return True else Left "Error: Seat-Count must be at least 2"
+	return (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
+
+--checks parameters, which are common to group and individual reservations, for validity
+checkRReservationData :: FromStation -> ToStation -> TrainId -> CarId -> Stations -> Trains -> Either String Bool
+checkRReservationData fromstation tostation trainid carid stations trains = do
 	if existsStation fromstation stations then return True else Left "Error: Starting-Station-ID does not exist"
 	if existsStation tostation stations then return True else Left "Error: Destination-Station-ID does not exist"
 	if fromstation /= tostation then return True else Left "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
 	if existsTrain trainid trains then return True else Left "Error: Train-ID does not exist"
 	if existsTrainCar trainid carid trains then return True else Left "Error: Car-ID does not exist"
-	if seatcount > 1 then return True else Left "Error: Seat-Count must be at least 2"
-	return (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
-{-
-newRGroupReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> Maybe RItem
-newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = reservation
-	where
-		fromstationok = existsStation fromstation stations
-		tostationok = existsStation tostation stations
-		trainidok = existsTrain trainid trains
-		caridok = existsTrainCar trainid carid trains
-		seatcountok = seatcount > 1
-		allright = fromstationok && tostationok && trainidok && caridok && seatcountok
-		reservation = if allright
-			then Just (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
-			else Nothing
--}
 
 
 isGroupReservation :: RItem -> Bool
