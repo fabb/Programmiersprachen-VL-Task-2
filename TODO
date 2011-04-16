@@ -25,3 +25,4 @@ Features
 
 * Facilitate Testability with HUnit?
     * HUnit is ready (testmain) - but not sure yet how to test monadic functions where suppressing of output from putStr would be desirable
+* use QuickCheck to "proof" basic algebraic relation, e.g. of the zipper
