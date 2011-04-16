@@ -706,6 +706,15 @@ takeWhileInclusive p (x:xs)
 	| otherwise =  [x]
 
 
+--maps the function f over all inbetween stations, returns Nothing when FromStation==ToStation
+mapStationsM :: (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> Maybe [a]
+mapStationsM f fromstation tostation stations = sfe
+	where
+		sf = mapStations f fromstation tostation stations 
+		sfe = if fromstation == tostation
+			then Nothing
+			else sf
+
 --maps the function f over all inbetween stations
 mapStations :: (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> Maybe [a]
 mapStations f fromstation tostation stations = fmap (map (\ (from,to) -> f from to stations)) (stationTuples fromstation tostation stations)
@@ -933,17 +942,17 @@ maybeMaximum ls = Just $ maximum ls
 --calculates the reservations for the given Train for all stations in the given range
 getUsedSeatCountTrainStationwise :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> Maybe [SeatCount]
 getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems = 
-	fmap (map (\ f -> f trainid ritems)) (mapStations getUsedSeatCountTrain fromstation tostation stations)
+	fmap (map (\ f -> f trainid ritems)) (mapStationsM getUsedSeatCountTrain fromstation tostation stations)
 
 --calculates the reservations for the given Car for all stations in the given range
 getUsedSeatCountTrainCarStationwise :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> Maybe [SeatCount]
 getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems = 
-	fmap (map (\ f -> f trainid carid ritems)) (mapStations getUsedSeatCountTrainCar fromstation tostation stations)
+	fmap (map (\ f -> f trainid carid ritems)) (mapStationsM getUsedSeatCountTrainCar fromstation tostation stations)
 
 --calculates the reservations for the given Seat for all stations in the given range
 getUsedSeatCountTrainCarSeatStationwise :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> Maybe [SeatCount]
 getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems = 
-	fmap (map (\ f -> f trainid carid seatid ritems)) (mapStations getUsedSeatCountTrainCarSeat fromstation tostation stations)
+	fmap (map (\ f -> f trainid carid seatid ritems)) (mapStationsM getUsedSeatCountTrainCarSeat fromstation tostation stations)
 
 
 {---------- Access RItem ----------}
@@ -954,6 +963,7 @@ newRIndividualReservation :: ReservationNumber -> (FromStation, ToStation, Train
 newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = do
 	if existsStation fromstation stations then return True else Left "Error: Starting-Station-ID does not exist"
 	if existsStation tostation stations then return True else Left "Error: Destination-Station-ID does not exist"
+	if fromstation /= tostation then return True else Left "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
 	if existsTrain trainid trains then return True else Left "Error: Train-ID does not exist"
 	if existsTrainCar trainid carid trains then return True else Left "Error: Car-ID does not exist"
 	if existsTrainCarSeat trainid carid seatid trains then return True else Left "Error: Seat-ID does not exist"
@@ -979,6 +989,7 @@ newRGroupReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, C
 newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = do
 	if existsStation fromstation stations then return True else Left "Error: Starting-Station-ID does not exist"
 	if existsStation tostation stations then return True else Left "Error: Destination-Station-ID does not exist"
+	if fromstation /= tostation then return True else Left "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
 	if existsTrain trainid trains then return True else Left "Error: Train-ID does not exist"
 	if existsTrainCar trainid carid trains then return True else Left "Error: Car-ID does not exist"
 	if seatcount > 1 then return True else Left "Error: Seat-Count must be at least 2"
