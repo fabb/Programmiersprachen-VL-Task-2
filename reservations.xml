@@ -1,45 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <reservations>
-  <issued_reservations>5</issued_reservations>
-  <group_reservation>
-    <reservation_number>10</reservation_number>
-    <from>2</from>
-    <to>3</to>
-    <train>4</train>
-    <car>5</car>
-    <count>6</count>
-  </group_reservation>
-  <group_reservation>
-    <reservation_number>2</reservation_number>
-    <from>3</from>
-    <to>4</to>
-    <train>5</train>
-    <car>6</car>
-    <count>7</count>
-  </group_reservation>
+  <issued_reservations>10</issued_reservations>
   <individual_reservation>
-    <reservation_number>3</reservation_number>
-    <from>4</from>
-    <to>5</to>
-    <train>6</train>
-    <car>7</car>
-    <seat>8</seat>
+    <reservation_number>1</reservation_number>
+    <from>2</from>
+    <to>9</to>
+    <train>1</train>
+    <car>1</car>
+    <seat>1</seat>
   </individual_reservation>
+  <individual_reservation>
+    <reservation_number>2</reservation_number>
+    <from>1</from>
+    <to>2</to>
+    <train>1</train>
+    <car>1</car>
+    <seat>1</seat>
+  </individual_reservation>
+  <group_reservation>
+    <reservation_number>3</reservation_number>
+    <from>1</from>
+    <to>5</to>
+    <train>1</train>
+    <car>1</car>
+    <count>9</count>
+  </group_reservation>
   <individual_reservation>
     <reservation_number>4</reservation_number>
-    <from>5</from>
-    <to>6</to>
-    <train>7</train>
-    <car>8</car>
-    <seat>9</seat>
+    <from>1</from>
+    <to>2</to>
+    <train>1</train>
+    <car>2</car>
+    <seat>1</seat>
+  </individual_reservation>
+  <individual_reservation>
+    <reservation_number>5</reservation_number>
+    <from>1</from>
+    <to>5</to>
+    <train>1</train>
+    <car>3</car>
+    <seat>1</seat>
+  </individual_reservation>
+  <individual_reservation>
+    <reservation_number>6</reservation_number>
+    <from>1</from>
+    <to>3</to>
+    <train>1</train>
+    <car>2</car>
+    <seat>3</seat>
   </individual_reservation>
   <group_reservation>
-    <reservation_number>20</reservation_number>
+    <reservation_number>7</reservation_number>
+    <from>1</from>
+    <to>3</to>
+    <train>1</train>
+    <car>3</car>
+    <count>2</count>
+  </group_reservation>
+  <group_reservation>
+    <reservation_number>8</reservation_number>
+    <from>1</from>
+    <to>3</to>
+    <train>1</train>
+    <car>3</car>
+    <count>4</count>
+  </group_reservation>
+  <group_reservation>
+    <reservation_number>9</reservation_number>
     <from>3</from>
-    <to>4</to>
-    <train>5</train>
-    <car>6</car>
-    <count>7</count>
+    <to>1</to>
+    <train>1</train>
+    <car>3</car>
+    <count>4</count>
+  </group_reservation>
+  <group_reservation>
+    <reservation_number>10</reservation_number>
+    <from>3</from>
+    <to>1</to>
+    <train>1</train>
+    <car>3</car>
+    <count>4</count>
   </group_reservation>
 </reservations>
 

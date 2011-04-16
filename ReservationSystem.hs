@@ -1,5 +1,4 @@
 --Fabian Ehrentraud, Bernhard Urban, 2011
---needs -XScopedTypeVariables
 
 module ReservationSystem where
 
@@ -99,13 +98,13 @@ main = do
 		
 		d <- loadData xmlFilename
 		
-		putStrLn $ show d --TODO test
+		--putStrLn $ show d --TODO test
 
 		d <- mainloop d
 		
 		writeData d xmlFilename
 		
-		putStrLn $ show d --TODO test
+		--putStrLn $ show d --TODO test
 		
 		printGoodbye
 		
@@ -140,7 +139,7 @@ mainloop appData = do
 					
 			"g" -> mShowIndividualReservations appData >> return appData
 					
-			"q" -> {- printDummy choice >> -} return appData --TODO could I quit from here when the result is assigned to zipper with <- ?
+			"q" -> {- printDummy choice >> -} return appData
 			
 			_   -> putStrLn ("Wrong input of '" ++ choice ++ "', please choose again.") >> return appData
 
@@ -514,7 +513,7 @@ deleteReservation :: ApplicationData -> ReservationNumber -> Either String Appli
 deleteReservation appdata reservationnumber = do
 	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --test
 	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --test
-	--changedZipper <- return $ reservationDeleteCurrent (getReservationZipper appdata) --TODO test, just deletes first item
+	--changedZipper <- return $ reservationDeleteCurrent (getReservationZipper appdata) --test, just deletes first item
 	--changedZipper <- return $ reservationTo reservationnumber (getReservationZipper appdata) >>= reservationDeleteCurrent
 	changedZipper <- return $ reservationDelete reservationnumber (getReservationZipper appdata)
 	case changedZipper of
