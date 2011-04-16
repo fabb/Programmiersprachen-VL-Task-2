@@ -607,36 +607,39 @@ freeSeat appdata trainid carid seatid fromstation tostation = do
 --Bool does not hold any information
 isReservationPossible :: ApplicationData -> RItem -> Either String Bool
 
-isReservationPossible appdata gr@(GroupReservation _ _) = do
-	--freeSeats does also take account for minFreeSeats
-	freeseats <- freeSeats appdata (getRTrainId gr) (getRCarId gr) (getRFromStationId gr) (getRToStationId gr)
-	groupseats <- maybe
-		(error "Program Error: Could not get Seat Count for Group Reservation")
-		Right $ getRSeatCount gr
-	
-	if freeseats >= groupseats
-		then Right True
-		else Left "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
+isReservationPossible appdata ritem =
+	if isGroupReservation ritem then do
+		--freeSeats does also take account for minFreeSeats
+		freeseats <- freeSeats appdata (getRTrainId ritem) (getRCarId ritem) (getRFromStationId ritem) (getRToStationId ritem)
+		groupseats <- maybe
+			(error "Program Error: Could not get Seat Count for Group Reservation")
+			Right $ getRSeatCount ritem
+		
+		if freeseats >= groupseats
+			then Right True
+			else Left "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
 
-isReservationPossible appdata ir@(IndividualReservation _ _) = do
-	seatid <- maybe
-		(error "Program Error: Could not get Seat-ID for Individual Reservation")
-		Right $ getRSeatId ir
+	else if isIndividualReservation ritem then do
+		seatid <- maybe
+			(error "Program Error: Could not get Seat-ID for Individual Reservation")
+			Right $ getRSeatId ritem
 
-	isseatfree <- maybe
-		(Left "Error: Could not calculate whether Seat is free within the provided Stations")
-		Right $ freeSeat appdata (getRTrainId ir) (getRCarId ir) seatid (getRFromStationId ir) (getRToStationId ir)
+		isseatfree <- maybe
+			(Left "Error: Could not calculate whether Seat is free within the provided Stations")
+			Right $ freeSeat appdata (getRTrainId ritem) (getRCarId ritem) seatid (getRFromStationId ritem) (getRToStationId ritem)
+		
+		if isseatfree >= 1
+			then Right True
+			else Left "Fail: Could not issue Individual Reservation - Seat is already reserved, at least on part of the provided Station Range"
+		
+		--freeSeats does also take account for minFreeSeats
+		freeseats <- freeSeats appdata (getRTrainId ritem) (getRCarId ritem) (getRFromStationId ritem) (getRToStationId ritem)
+		
+		if freeseats >= 1
+			then Right True
+			else Left "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
 	
-	if isseatfree >= 1
-		then Right True
-		else Left "Fail: Could not issue Individual Reservation - Seat is already reserved, at least on part of the provided Station Range"
-	
-	--freeSeats does also take account for minFreeSeats
-	freeseats <- freeSeats appdata (getRTrainId ir) (getRCarId ir) (getRFromStationId ir) (getRToStationId ir)
-	
-	if freeseats >= 1
-		then Right True
-		else Left "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
+	else error "Program Error: Unknown Reservation Type encountered"
 
 
 {---------- Access ApplicationData ----------}
