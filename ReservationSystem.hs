@@ -1,5 +1,9 @@
 --Fabian Ehrentraud, Bernhard Urban, 2011
 
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module ReservationSystem where
 
 {---------- Imports ----------}
@@ -12,6 +16,11 @@ import Text.XML.HXT.Core
 import Text.XML.HXT.RelaxNG
  
 import System.Environment
+
+import Control.Failure
+import Control.Monad.Instances
+
+instance Failure e (Either e) where failure = Left
 
 
 {---------- Globals ----------}
@@ -461,8 +470,15 @@ readbound = do
 --read in the String to the wanted type
 --if not fitting to that type, returns Nothing
 --leading and trailing whitespaces are ignored (leading already by function reads)
-maybeReadTWS :: Read a => String -> Maybe a
-maybeReadTWS = fmap fst . listToMaybe . filter (null . dropWhile isSpace . snd) . reads
+maybeReadTWS :: (Monad m, Failure NothingException m, Read a) => String -> m a
+maybeReadTWS = (return . fst =<<) . (try . listToMaybe) . filter (null . dropWhile isSpace . snd) . reads
+
+{-
+--like listToMaybe, but for all monads with a Failure instance
+listToF :: (Monad m, Failure StringException m) => [a] -> m a
+listToF [] = failureString "Empty List"
+listToF (a:_) = return a
+-}
 
 --splits the given String into substrings
 --spaces separate substrings and are thrown away
@@ -1049,30 +1065,30 @@ makeRZipper xs = (xs, [])
 
 --unpacks the zipper back to a list of reservations
 unpackRZipper :: ReservationZipper -> [RItem]
-unpackRZipper z = maybe [] fst $ goFirst z
+unpackRZipper z = maybe [] fst $ goFirst z --TODO this binds the return type of goFirst to the Maybe Monad - is there another way?
 
 --forwards for one item
-goForward :: ReservationZipper -> Maybe ReservationZipper
-goForward (x:xs, bs) = Just (xs, x:bs)
-goForward ([], _) = Nothing
+goForward :: (Monad m, Failure StringException m) => ReservationZipper -> m ReservationZipper
+goForward (x:xs, bs) = return (xs, x:bs)
+goForward ([], _) = failureString "Could not go forward in Zipper, as already at the end"
 
 --rewinds to the previous item
-goBack :: ReservationZipper -> Maybe ReservationZipper
-goBack (xs, b:bs) = Just (b:xs, bs)
-goBack (_, []) = Nothing
+goBack :: (Monad m, Failure StringException m) => ReservationZipper -> m ReservationZipper
+goBack (xs, b:bs) = return (b:xs, bs)
+goBack (_, []) = failureString "Could not go back in Zipper, as already at the beginning"
 
 --rewinds to the first item
-goFirst :: ReservationZipper -> Maybe ReservationZipper
+goFirst :: (Monad m, Failure StringException m) => ReservationZipper -> m ReservationZipper
 goFirst z@(xs, b:bs) = goBack z >>= goFirst
-goFirst z@(_, []) = Just z
+goFirst z@(_, []) = return z
 
 --forwards until after the last item
-goLast :: ReservationZipper -> Maybe ReservationZipper
+goLast :: (Monad m, Failure StringException m) => ReservationZipper -> m ReservationZipper
 goLast z@(x:xs, bs) = goForward z >>= goLast
-goLast z@([], _) = Just z
+goLast z@([], _) = return z
 
 --sets the current item to the one with the given number
-reservationTo :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
+reservationTo :: (Monad m, Failure StringException m) => ReservationNumber -> ReservationZipper -> m ReservationZipper
 reservationTo resnum z@(xs, bs) = do
 	(items, _) <- goFirst z
 	(ls, item:rs) <- return $ break (reservationIs resnum) items
@@ -1084,20 +1100,20 @@ reservationIs resnum (GroupReservation reservationNumber _)      = resnum == res
 reservationIs resnum (IndividualReservation reservationNumber _) = resnum == reservationNumber
 
 --inserts a new reservation before the current item
-reservationNew :: RItem -> ReservationZipper -> Maybe ReservationZipper
-reservationNew item (xs, bs) = Just (item:xs, bs)
+reservationNew :: (Monad m, Failure StringException m) => RItem -> ReservationZipper -> m ReservationZipper
+reservationNew item (xs, bs) = return (item:xs, bs)
 
 --inserts a new reservation as last item
-reservationNewLast :: RItem -> ReservationZipper -> Maybe ReservationZipper
+reservationNewLast :: (Monad m, Failure StringException m) => RItem -> ReservationZipper -> m ReservationZipper
 reservationNewLast item z = goLast z >>= reservationNew item
 
 --delete the current item
-reservationDeleteCurrent :: ReservationZipper -> Maybe ReservationZipper
+reservationDeleteCurrent :: (Monad m, Failure StringException m) => ReservationZipper -> m ReservationZipper
 reservationDeleteCurrent (x:xs, bs) = return (xs, bs)
-reservationDeleteCurrent ([], _) = Nothing
+reservationDeleteCurrent ([], _) = failureString "Could not delete current item, as at the end of the Zipper"
 
 --deletes the reservation with the given number
-reservationDelete :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
+reservationDelete :: (Monad m, Failure StringException m) => ReservationNumber -> ReservationZipper -> m ReservationZipper
 reservationDelete resnum z = reservationTo resnum z >>= reservationDeleteCurrent
 
 
