@@ -95,6 +95,12 @@ data RItem = GroupReservation ReservationNumber GroupReservationData
 type RCrumb = RItem 
 
 
+{---------- Failure String ----------}
+
+tryM :: Failure StringException m => String -> Maybe a -> m a
+tryM e Nothing = failureString e
+tryM e (Just x) = return x
+
 
 {---------- Main ----------} 
 
@@ -470,8 +476,8 @@ readbound = do
 --read in the String to the wanted type
 --if not fitting to that type, returns Nothing
 --leading and trailing whitespaces are ignored (leading already by function reads)
-maybeReadTWS :: (Failure NothingException m, Read a) => String -> m a
-maybeReadTWS = (return . fst =<<) . (try . listToMaybe) . filter (null . dropWhile isSpace . snd) . reads
+maybeReadTWS :: (Failure StringException m, Read a) => String -> m a
+maybeReadTWS = (return . fst =<<) . (tryM "Error: Empty Input" . listToMaybe) . filter (null . dropWhile isSpace . snd) . reads
 
 {-
 --like listToMaybe, but for all monads with a Failure instance
