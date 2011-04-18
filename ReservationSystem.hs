@@ -594,7 +594,7 @@ freeSeats appdata trainid carid startstation endstation = do
 
 
 --returns the number of free seats for the given Train between the provided stations
-freeSeatsTrain :: ApplicationData -> TrainId -> FromStation -> ToStation -> Maybe Integer
+freeSeatsTrain :: Failure StringException m => ApplicationData -> TrainId -> FromStation -> ToStation -> m Integer
 freeSeatsTrain appdata trainid fromstation tostation = do
 	stations <- return $ getStations appdata
 	trains <- return $ getTrains appdata
@@ -604,7 +604,7 @@ freeSeatsTrain appdata trainid fromstation tostation = do
 	return $ wholeseats - used
 
 --returns the number of free seats for the given Train Car between the provided stations
-freeSeatsCar :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Maybe Integer
+freeSeatsCar :: Failure StringException m => ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> m Integer
 freeSeatsCar appdata trainid carid fromstation tostation = do
 	stations <- return $ getStations appdata
 	trains <- return $ getTrains appdata
@@ -614,7 +614,7 @@ freeSeatsCar appdata trainid carid fromstation tostation = do
 	return $ wholeseats - used
 
 --returns the number of free seats for the given Seat between the provided stations (1 or 0)
-freeSeat :: ApplicationData -> TrainId -> CarId -> SeatId -> FromStation -> ToStation -> Maybe Integer
+freeSeat :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> FromStation -> ToStation -> m Integer
 freeSeat appdata trainid carid seatid fromstation tostation = do
 	stations <- return $ getStations appdata
 	res <- return $ unpackRZipper $ getReservationZipper appdata
@@ -701,18 +701,18 @@ showStations (x:y:xs) = show x ++ " - " ++ showStations (y:xs)
 showStations (x:xs) = show x
 
 --could also be dependent of Train if it does not stop in all Stations, not implemented for simplification reasons
-getStationsBetween :: FromStation -> ToStation -> Stations -> Maybe [Station]
+getStationsBetween :: Failure StringException m => FromStation -> ToStation -> Stations -> m [Station]
 getStationsBetween = takeRange
 
 
 --gets the range from the given list where all items between and including the first occurrence of the "first" item and the first ocurrence of the "last" item are returned
 --when the "first" item occurrs after the "last" item in the given list, the result is reversed in order to let the "first" item really appear first
-takeRange :: Eq a => a -> a -> [a] -> Maybe [a]
+takeRange :: (Failure StringException m, Eq a) => a -> a -> [a] -> m [a]
 takeRange first last list
-	| notElem first list || notElem last list = Nothing
-	| first == last = Just [first]
-	| occurrsBefore first last list = Just $ takeWhileInclusive (/=last) $ dropWhile (/=first) list
-	| not $ occurrsBefore first last list = Just $ reverse $ takeWhileInclusive (/=first) $ dropWhile (/=last) list
+	| notElem first list || notElem last list = failureString "Error: Provided First and Last Elements not part of List"
+	| first == last = return [first]
+	| occurrsBefore first last list = return $ takeWhileInclusive (/=last) $ dropWhile (/=first) list
+	| not $ occurrsBefore first last list = return $ reverse $ takeWhileInclusive (/=first) $ dropWhile (/=last) list
 
 --returns whether the first element occurrs before the second one in the given list
 --when the two elements are equal, return False
@@ -729,25 +729,25 @@ takeWhileInclusive p (x:xs)
 
 
 --maps the function f over all inbetween stations, returns Nothing when FromStation==ToStation
-mapStationsM :: (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> Maybe [a]
+mapStationsM :: Failure StringException m => (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> m [a]
 mapStationsM f fromstation tostation stations = sfe
 	where
 		sf = mapStations f fromstation tostation stations 
 		sfe = if fromstation == tostation
-			then Nothing
+			then failureString "Error: Starting-Station-ID same as Destination-Station-ID"
 			else sf
 
 --maps the function f over all inbetween stations
-mapStations :: (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> Maybe [a]
-mapStations f fromstation tostation stations = fmap (map (\ (from,to) -> f from to stations)) (stationTuples fromstation tostation stations)
+mapStations :: Failure StringException m => (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> m [a]
+mapStations f fromstation tostation stations = (return . (map (\ (from,to) -> f from to stations)) =<<) (stationTuples fromstation tostation stations)
 
 
 --calculates tuples of stations next to each other in the given range
-stationTuples :: FromStation -> ToStation -> Stations -> Maybe [(Station,Station)]
+stationTuples :: Failure StringException m => FromStation -> ToStation -> Stations -> m [(Station,Station)]
 stationTuples fromstation tostation stations = tuples
 	where
 		stationrange = getStationsBetween fromstation tostation stations
-		tuples = fmap tuplifyNeighbors stationrange
+		tuples = (return . tuplifyNeighbors =<<) stationrange
 
 --converts a list into a list with tuples of adjacent elements from the original list
 tuplifyNeighbors :: [a] -> [(a,a)]
@@ -809,19 +809,19 @@ getSeatIds :: Seats -> [SeatId]
 getSeatIds seats = map getSeatId seats
 
 
-getTrain :: TrainId -> Trains -> Maybe Train
-getTrain tId trains = find (\ t -> getTrainId t == tId) trains
+getTrain :: Failure StringException m => TrainId -> Trains -> m Train
+getTrain tId trains = tryM "Error: Train-ID not found" $ find (\ t -> getTrainId t == tId) trains
 
-getCar :: CarId -> Train -> Maybe Car
-getCar cId train = find (\ c -> getCarId c == cId) $ getCars train
+getCar :: Failure StringException m => CarId -> Train -> m Car
+getCar cId train = tryM "Error: Car-ID not found" $ find (\ c -> getCarId c == cId) $ getCars train
 
-getTrainCar :: TrainId -> CarId -> Trains -> Maybe Car
+getTrainCar :: Failure StringException m => TrainId -> CarId -> Trains -> m Car
 getTrainCar tId cId trains = getTrain tId trains >>= getCar cId
 
-getSeat :: SeatId -> Car -> Maybe Seat
-getSeat sId car = find (\ s -> getSeatId s == sId) $ getSeats car
+getSeat :: Failure StringException m => SeatId -> Car -> m Seat
+getSeat sId car = tryM "Error: Seat-ID not found" $ find (\ s -> getSeatId s == sId) $ getSeats car
 
-getTrainCarSeat :: TrainId -> CarId -> SeatId -> Trains -> Maybe Seat
+getTrainCarSeat :: Failure StringException m => TrainId -> CarId -> SeatId -> Trains -> m Seat
 getTrainCarSeat tId cId sId trains = getTrain tId trains >>= getCar cId >>= getSeat sId
 
 
@@ -852,11 +852,11 @@ instance SeatCountable Car where
 -}
 
 
-getSeatCountTrainId :: TrainId -> Trains -> Maybe Integer
-getSeatCountTrainId trainid trains = fmap getSeatCountTrain $ getTrain trainid trains
+getSeatCountTrainId :: Failure StringException m => TrainId -> Trains -> m Integer
+getSeatCountTrainId trainid trains = (return . getSeatCountTrain =<<) (getTrain trainid trains)
 
-getSeatCountTrainCarId :: TrainId -> CarId -> Trains -> Maybe Integer
-getSeatCountTrainCarId trainid carid trains = fmap getSeatCountCar $ getTrainCar trainid carid trains
+getSeatCountTrainCarId :: Failure StringException m => TrainId -> CarId -> Trains -> m Integer
+getSeatCountTrainCarId trainid carid trains = (return . getSeatCountCar =<<) (getTrainCar trainid carid trains)
 
 
 getSeatCountTrain :: Train -> Integer
@@ -940,41 +940,41 @@ getUsedSeatCountTrainCarSeat fromstation tostation stations trainid carid seatid
 
 --calculates the maximum used seats for the given Train in the given Station range
 --takes care of overlapping and non-overlapping reservations
-getUsedSeatCountTrainMaximum :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainMaximum fromstation tostation stations trainid ritems = maybeMaximum =<< getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems
+getUsedSeatCountTrainMaximum :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> m SeatCount
+getUsedSeatCountTrainMaximum fromstation tostation stations trainid ritems = maximumF =<< getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems
 
 --calculates the maximum used seats for the given Car in the given Station range
 --takes care of overlapping and non-overlapping reservations
-getUsedSeatCountTrainCarMaximum :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid ritems = maybeMaximum =<< getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems
+getUsedSeatCountTrainCarMaximum :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> m SeatCount
+getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid ritems = maximumF =<< getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems
 
 --calculates the maximum used seats for the given Seat in the given Station range
 --takes care of overlapping and non-overlapping reservations
-getUsedSeatCountTrainCarSeatMaximum :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid ritems = maybeMaximum =<< getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems
+getUsedSeatCountTrainCarSeatMaximum :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> m SeatCount
+getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid ritems = maximumF =<< getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems
 
 
 --calculates the maximum of the list
---returns Nothing only when the list is empty
-maybeMaximum :: Ord a => [a] -> Maybe a
-maybeMaximum [] = Nothing
-maybeMaximum ls = Just $ maximum ls
+--returns Failure only when the list is empty
+maximumF :: (Failure StringException m, Ord a) => [a] -> m a
+maximumF [] = failureString "Error: List is empty"
+maximumF ls = return $ maximum ls
 
 
 --calculates the reservations for the given Train for all stations in the given range
-getUsedSeatCountTrainStationwise :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainStationwise :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> m [SeatCount]
 getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems = 
-	fmap (map (\ f -> f trainid ritems)) (mapStationsM getUsedSeatCountTrain fromstation tostation stations)
+	(return . (map (\ f -> f trainid ritems)) =<<) (mapStationsM getUsedSeatCountTrain fromstation tostation stations)
 
 --calculates the reservations for the given Car for all stations in the given range
-getUsedSeatCountTrainCarStationwise :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainCarStationwise :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> m [SeatCount]
 getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems = 
-	fmap (map (\ f -> f trainid carid ritems)) (mapStationsM getUsedSeatCountTrainCar fromstation tostation stations)
+	(return . (map (\ f -> f trainid carid ritems)) =<<) (mapStationsM getUsedSeatCountTrainCar fromstation tostation stations)
 
 --calculates the reservations for the given Seat for all stations in the given range
-getUsedSeatCountTrainCarSeatStationwise :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainCarSeatStationwise :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> m [SeatCount]
 getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems = 
-	fmap (map (\ f -> f trainid carid seatid ritems)) (mapStationsM getUsedSeatCountTrainCarSeat fromstation tostation stations)
+	(return . (map (\ f -> f trainid carid seatid ritems)) =<<) (mapStationsM getUsedSeatCountTrainCarSeat fromstation tostation stations)
 
 
 {---------- Access RItem ----------}
@@ -1034,13 +1034,13 @@ getRCarId :: RItem -> CarId
 getRCarId (IndividualReservation _ (_,_,_,carid,_)) = carid
 getRCarId (GroupReservation _ (_,_,_,carid,_)) = carid
 
-getRSeatId :: RItem -> Maybe SeatId
-getRSeatId (IndividualReservation _ (_,_,_,_,seatid)) = Just seatid
-getRSeatId (GroupReservation _ _) = Nothing
+getRSeatId :: Failure StringException m => RItem -> m SeatId
+getRSeatId (IndividualReservation _ (_,_,_,_,seatid)) = return seatid
+getRSeatId (GroupReservation _ _) = failureString "Error: Cannot get Seat-ID as GroupReservation present"
 
-getRSeatCount :: RItem -> Maybe SeatCount
-getRSeatCount (GroupReservation _ (_,_,_,_,seatcount)) = Just seatcount
-getRSeatCount (IndividualReservation _ _) = Nothing
+getRSeatCount :: Failure StringException m => RItem -> m SeatCount
+getRSeatCount (GroupReservation _ (_,_,_,_,seatcount)) = return seatcount
+getRSeatCount (IndividualReservation _ _) = failureString "Error: Cannot get Seat-Count as IndividualReservation present"
 
 
 getRUsedSeats :: RItem -> SeatCount
@@ -1050,17 +1050,17 @@ getRUsedSeats (IndividualReservation _ _) = 1
 
 
 --checks whether the given reservation is active between the given stations
-isActiveBetween :: FromStation -> ToStation -> Stations -> RItem -> Maybe Bool
+isActiveBetween :: Failure StringException m => FromStation -> ToStation -> Stations -> RItem -> m Bool
 isActiveBetween fromstation tostation stations ritem =
 	if fromstation == tostation
-	then Nothing
+	then failureString "Error: Starting-Station-ID is the same as Destination-Station-ID"
 	else isInfixOfMaybe checkstations resstations
 	where
 		resstations = getStationsBetween (getRFromStationId ritem) (getRToStationId ritem) stations --stations the reservation is active for
 		checkstations = getStationsBetween fromstation tostation stations --stations inbetween the given bounds - this must be a subset
 		--direction is important, so also compare order
-		isInfixOfMaybe (Just x) (Just y) = Just $ isInfixOf x y
-		isInfixOfMaybe _ _ = Nothing
+		isInfixOfMaybe (Just x) (Just y) = return $ isInfixOf x y
+		isInfixOfMaybe _ _ = failureString "Error: Could not get Reserved Stations" --FIXME
 
 
 {---------- Zipper Stuff ----------}
