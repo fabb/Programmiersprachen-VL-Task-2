@@ -222,7 +222,7 @@ mNewIndividualReservation appdata = do
 					z <- return $ newIndividualReservation appdata startstation endstation trainid carid seatid
 			
 					case z of
-						Left error -> do
+						Left (StringException error) -> do
 							putStrLn error
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
@@ -260,7 +260,7 @@ mNewGroupReservation appdata = do
 					z <- return $ newGroupReservation appdata startstation endstation trainid carid seatcount
 			
 					case z of
-						Left error -> do
+						Left (StringException error) -> do
 							putStrLn error
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
@@ -298,7 +298,7 @@ mDeleteReservation appdata = do
 					z <- return $ deleteReservation appdata reservationnumber
 			
 					case z of
-						Left error -> do
+						Left (StringException error) -> do
 							putStrLn error
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
@@ -349,7 +349,7 @@ mShowGroupReservations appdata = do
 					z <- return $ groupReservations appdata trainid carid
 			
 					case z of
-						Left error -> putStrLn error
+						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right groupreservations -> if isREmpty groupreservations
 							then putStrLn $ "NO group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid
@@ -384,7 +384,7 @@ mShowIndividualReservations appdata = do
 					z <- return $ individualReservations appdata trainid carid seatid
 			
 					case z of
-						Left error -> putStrLn error
+						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right individualreservations -> if isREmpty individualreservations
 							then putStrLn $ "NO individual reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
@@ -419,7 +419,7 @@ mShowFreeSeats appdata = do
 					z <- return $ freeSeats appdata trainid carid startstation endstation
 			
 					case z of
-						Left error -> putStrLn error
+						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right seats -> do
 							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
@@ -501,7 +501,7 @@ tokenizeWS xs
 {---------- Real Working Functions ----------}
 
 --issues a new individual reservation when there is enough place left
-newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> Either String (ApplicationData, ReservationNumber)
+newIndividualReservation :: Failure StringException m => ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> m (ApplicationData, ReservationNumber)
 newIndividualReservation appdata startstation endstation trainid carid seatid = do
 	newData1 <- return $ incIssuedReservations appdata
 	resnum <- return $ getIssuedReservations newData1
@@ -516,7 +516,7 @@ newIndividualReservation appdata startstation endstation trainid carid seatid = 
 		Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --issues a new group reservation when there is enough place left
-newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String (ApplicationData, ReservationNumber)
+newGroupReservation :: Failure StringException m => ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> m (ApplicationData, ReservationNumber)
 newGroupReservation appdata startstation endstation trainid carid seatcount = do
 	newData1 <- return $ incIssuedReservations appdata
 	resnum <- return $ getIssuedReservations newData1
@@ -531,7 +531,7 @@ newGroupReservation appdata startstation endstation trainid carid seatcount = do
 		Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --deletes the reservation with the given reservation number
-deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
+deleteReservation :: Failure StringException m => ApplicationData -> ReservationNumber -> m ApplicationData
 deleteReservation appdata reservationnumber = do
 	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --test
 	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --test
@@ -539,56 +539,56 @@ deleteReservation appdata reservationnumber = do
 	--changedZipper <- return $ reservationTo reservationnumber (getReservationZipper appdata) >>= reservationDeleteCurrent
 	changedZipper <- return $ reservationDelete reservationnumber (getReservationZipper appdata)
 	case changedZipper of
-		Nothing -> Left "Error: No such Reservation found"
-		Just x -> Right $ setReservationZipper appdata x
+		Nothing -> failureString "Error: No such Reservation found"
+		Just x -> return $ setReservationZipper appdata x
 
 --calculates group reservations for given Train Car
-groupReservations :: ApplicationData -> TrainId -> CarId -> Either String [RItem]
+groupReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> m [RItem]
 groupReservations appdata trainid carid = do
 	trains <- return $ getTrains appdata
 	if existsTrain trainid trains
-		then Right True else Left "Error: No such Train-ID"
+		then return True else failureString "Error: No such Train-ID"
 	if existsTrainCar trainid carid trains
-		then Right True else Left "Error: No such Car-ID attached to existing Train-ID"
+		then return True else failureString "Error: No such Car-ID attached to existing Train-ID"
 	res <- return $ unpackRZipper $ getReservationZipper appdata
 	return $ filterTrainCar trainid carid $ filterGroupReservations res
 
 --calculates individual reservations for the given seat (in the given car (which is part of the given train))
-individualReservations :: ApplicationData -> TrainId -> CarId -> SeatId -> Either String [RItem]
+individualReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> m [RItem]
 individualReservations appdata trainid carid seatid = do
 	trains <- return $ getTrains appdata
 	if existsTrain trainid trains
-		then Right True else Left "Error: No such Train-ID"
+		then return True else failureString "Error: No such Train-ID"
 	if existsTrainCar trainid carid trains
-		then Right True else Left "Error: No such Car-ID attached to existing Train-ID"
+		then return True else failureString "Error: No such Car-ID attached to existing Train-ID"
 	if existsTrainCarSeat trainid carid seatid trains
-		then Right True else Left "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
+		then return True else failureString "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
 	res <- return $ unpackRZipper $ getReservationZipper appdata
 	return $ filterTrainCarSeat trainid carid seatid $ filterIndividualReservations res --filterIndividualReservations wouldn't be necessary as filterTrainCarSeat already does that
 
 --calculates minimum free seat count in given Train Car between given Stations
 --if the train is so full as a whole (minimum free seats per train) that it's free seats , that value will be displayed instead
-freeSeats :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Either String SeatCount
+freeSeats :: Failure StringException m => ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> m SeatCount
 freeSeats appdata trainid carid startstation endstation = do
 	--TODO more specific error messages, needs Either Monad output from freeSeatsCar
 
 	minfree <- maybe
-		(Left "Error: Could not get details for Train")
-		Right $ return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
+		(failureString "Error: Could not get details for Train")
+		return $ return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
 	
 	{-
 	trainseatcount <- maybe
-		(Left "Error: Could not get details for Train")
-		Right $ return (getTrains appdata) >>= getSeatCountTrainId trainid
+		(failureString "Error: Could not get details for Train")
+		return $ return (getTrains appdata) >>= getSeatCountTrainId trainid
 	-}
 	
 	trainfree <- maybe
-		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
-		Right $ freeSeatsTrain appdata trainid startstation endstation
+		(failureString $ "Error: Could not get Seats for Train " ++ show trainid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
+		return $ freeSeatsTrain appdata trainid startstation endstation
 	
 	carfree <- maybe
-		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
-		Right $ freeSeatsCar appdata trainid carid startstation endstation
+		(failureString $ "Error: Could not get Seats for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
+		return $ freeSeatsCar appdata trainid carid startstation endstation
 	
 	return $ min carfree (trainfree - minfree)
 
@@ -627,7 +627,7 @@ freeSeat appdata trainid carid seatid fromstation tostation = do
 --calculates whether the given, not yet issued, reservation is possible
 --also checks whether StartStation and EndStation are valid
 --Bool does not hold any information
-isReservationPossible :: ApplicationData -> RItem -> Either String Bool
+isReservationPossible :: Failure StringException m => ApplicationData -> RItem -> m Bool
 
 isReservationPossible appdata ritem =
 	if isGroupReservation ritem then do
@@ -635,31 +635,31 @@ isReservationPossible appdata ritem =
 		freeseats <- freeSeats appdata (getRTrainId ritem) (getRCarId ritem) (getRFromStationId ritem) (getRToStationId ritem)
 		groupseats <- maybe
 			(error "Program Error: Could not get Seat Count for Group Reservation")
-			Right $ getRSeatCount ritem
+			return $ getRSeatCount ritem
 		
 		if freeseats >= groupseats
-			then Right True
-			else Left "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
+			then return True
+			else failureString "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
 
 	else if isIndividualReservation ritem then do
 		seatid <- maybe
 			(error "Program Error: Could not get Seat-ID for Individual Reservation")
-			Right $ getRSeatId ritem
+			return $ getRSeatId ritem
 
 		isseatfree <- maybe
-			(Left "Error: Could not calculate whether Seat is free within the provided Stations")
-			Right $ freeSeat appdata (getRTrainId ritem) (getRCarId ritem) seatid (getRFromStationId ritem) (getRToStationId ritem)
+			(failureString "Error: Could not calculate whether Seat is free within the provided Stations")
+			return $ freeSeat appdata (getRTrainId ritem) (getRCarId ritem) seatid (getRFromStationId ritem) (getRToStationId ritem)
 		
 		if isseatfree >= 1
-			then Right True
-			else Left "Fail: Could not issue Individual Reservation - Seat is already reserved, at least on part of the provided Station Range"
+			then return True
+			else failureString "Fail: Could not issue Individual Reservation - Seat is already reserved, at least on part of the provided Station Range"
 		
 		--freeSeats does also take account for minFreeSeats
 		freeseats <- freeSeats appdata (getRTrainId ritem) (getRCarId ritem) (getRFromStationId ritem) (getRToStationId ritem)
 		
 		if freeseats >= 1
-			then Right True
-			else Left "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
+			then return True
+			else failureString "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
 	
 	else error "Program Error: Unknown Reservation Type encountered"
 
@@ -981,28 +981,28 @@ getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid c
 
 --creates a new Individual Reservation
 --checks parameters for validity - except to ReservationNumber
-newRIndividualReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> Either String RItem
+newRIndividualReservation :: Failure StringException m => ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> m RItem
 newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = do
 	checkRReservationData fromstation tostation trainid carid stations trains
-	if existsTrainCarSeat trainid carid seatid trains then return True else Left "Error: Seat-ID does not exist"
+	if existsTrainCarSeat trainid carid seatid trains then return True else failureString "Error: Seat-ID does not exist"
 	return (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid))
 
 --creates a new Individual Reservation
 --checks parameters for validity - except to ReservationNumber
-newRGroupReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> Either String RItem
+newRGroupReservation :: Failure StringException m => ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> m RItem
 newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = do
 	checkRReservationData fromstation tostation trainid carid stations trains
-	if seatcount > 1 then return True else Left "Error: Seat-Count must be at least 2"
+	if seatcount > 1 then return True else failureString "Error: Seat-Count must be at least 2"
 	return (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
 
 --checks parameters, which are common to group and individual reservations, for validity
-checkRReservationData :: FromStation -> ToStation -> TrainId -> CarId -> Stations -> Trains -> Either String Bool
+checkRReservationData :: Failure StringException m => FromStation -> ToStation -> TrainId -> CarId -> Stations -> Trains -> m Bool
 checkRReservationData fromstation tostation trainid carid stations trains = do
-	if existsStation fromstation stations then return True else Left "Error: Starting-Station-ID does not exist"
-	if existsStation tostation stations then return True else Left "Error: Destination-Station-ID does not exist"
-	if fromstation /= tostation then return True else Left "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
-	if existsTrain trainid trains then return True else Left "Error: Train-ID does not exist"
-	if existsTrainCar trainid carid trains then return True else Left "Error: Car-ID does not exist"
+	if existsStation fromstation stations then return True else failureString "Error: Starting-Station-ID does not exist"
+	if existsStation tostation stations then return True else failureString "Error: Destination-Station-ID does not exist"
+	if fromstation /= tostation then return True else failureString "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
+	if existsTrain trainid trains then return True else failureString "Error: Train-ID does not exist"
+	if existsTrainCar trainid carid trains then return True else failureString "Error: Car-ID does not exist"
 
 
 isGroupReservation :: RItem -> Bool
