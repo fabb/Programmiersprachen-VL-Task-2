@@ -477,7 +477,7 @@ readbound = do
 --if not fitting to that type, returns Nothing
 --leading and trailing whitespaces are ignored (leading already by function reads)
 maybeReadTWS :: (Failure StringException m, Read a) => String -> m a
-maybeReadTWS = (return . fst =<<) . (tryM "Error: Empty Input" . listToMaybe) . filter (null . dropWhile isSpace . snd) . reads
+maybeReadTWS = (return . fst =<<) . (tryM "Error: Could not read wanted type" . listToMaybe) . filter (null . dropWhile isSpace . snd) . reads
 
 {-
 --like listToMaybe, but for all monads with a Failure instance
@@ -570,26 +570,10 @@ individualReservations appdata trainid carid seatid = do
 --if the train is so full as a whole (minimum free seats per train) that it's free seats , that value will be displayed instead
 freeSeats :: Failure StringException m => ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> m SeatCount
 freeSeats appdata trainid carid startstation endstation = do
-	--TODO more specific error messages, needs Either Monad output from freeSeatsCar
-
-	minfree <- maybe
-		(failureString "Error: Could not get details for Train")
-		return $ return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
-	
-	{-
-	trainseatcount <- maybe
-		(failureString "Error: Could not get details for Train")
-		return $ return (getTrains appdata) >>= getSeatCountTrainId trainid
-	-}
-	
-	trainfree <- maybe
-		(failureString $ "Error: Could not get Seats for Train " ++ show trainid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
-		return $ freeSeatsTrain appdata trainid startstation endstation
-	
-	carfree <- maybe
-		(failureString $ "Error: Could not get Seats for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
-		return $ freeSeatsCar appdata trainid carid startstation endstation
-	
+	minfree <- return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
+	--trainseatcount <- return (getTrains appdata) >>= getSeatCountTrainId trainid	
+	trainfree <- freeSeatsTrain appdata trainid startstation endstation
+	carfree <- freeSeatsCar appdata trainid carid startstation endstation
 	return $ min carfree (trainfree - minfree)
 
 
@@ -646,9 +630,7 @@ isReservationPossible appdata ritem =
 			(error "Program Error: Could not get Seat-ID for Individual Reservation")
 			return $ getRSeatId ritem
 
-		isseatfree <- maybe
-			(failureString "Error: Could not calculate whether Seat is free within the provided Stations")
-			return $ freeSeat appdata (getRTrainId ritem) (getRCarId ritem) seatid (getRFromStationId ritem) (getRToStationId ritem)
+		isseatfree <- freeSeat appdata (getRTrainId ritem) (getRCarId ritem) seatid (getRFromStationId ritem) (getRToStationId ritem)
 		
 		if isseatfree >= 1
 			then return True
@@ -1051,16 +1033,12 @@ getRUsedSeats (IndividualReservation _ _) = 1
 
 --checks whether the given reservation is active between the given stations
 isActiveBetween :: Failure StringException m => FromStation -> ToStation -> Stations -> RItem -> m Bool
-isActiveBetween fromstation tostation stations ritem =
-	if fromstation == tostation
-	then failureString "Error: Starting-Station-ID is the same as Destination-Station-ID"
-	else isInfixOfMaybe checkstations resstations
-	where
-		resstations = getStationsBetween (getRFromStationId ritem) (getRToStationId ritem) stations --stations the reservation is active for
-		checkstations = getStationsBetween fromstation tostation stations --stations inbetween the given bounds - this must be a subset
-		--direction is important, so also compare order
-		isInfixOfMaybe (Just x) (Just y) = return $ isInfixOf x y
-		isInfixOfMaybe _ _ = failureString "Error: Could not get Reserved Stations" --FIXME
+isActiveBetween fromstation tostation stations ritem = do
+	if fromstation /= tostation then return True
+		else failureString "Error: Starting-Station-ID is the same as Destination-Station-ID"
+	resstations <- getStationsBetween (getRFromStationId ritem) (getRToStationId ritem) stations --stations the reservation is active for
+	checkstations <- getStationsBetween fromstation tostation stations --stations inbetween the given bounds - this must be a subset
+	return $ isInfixOf checkstations resstations
 
 
 {---------- Zipper Stuff ----------}
