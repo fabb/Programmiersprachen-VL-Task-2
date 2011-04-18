@@ -1080,8 +1080,7 @@ reservationTo resnum z@(xs, bs) = do
 
 --True when the given item has the given reservation number
 reservationIs :: ReservationNumber -> RItem -> Bool
-reservationIs resnum (GroupReservation reservationNumber _)      = resnum == reservationNumber
-reservationIs resnum (IndividualReservation reservationNumber _) = resnum == reservationNumber
+reservationIs resnum ritem = resnum == getRReservationNumber ritem
 
 --inserts a new reservation before the current item
 reservationNew :: RItem -> ReservationZipper -> Maybe ReservationZipper
