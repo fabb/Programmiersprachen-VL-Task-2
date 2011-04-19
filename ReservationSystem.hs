@@ -679,8 +679,8 @@ incIssuedReservations appdata = setIssuedReservations appdata $ 1 + getIssuedRes
 {---------- Access Stations ADT ----------}
 
 showStations :: Stations -> String
-showStations (x:y:xs) = show x ++ " - " ++ showStations (y:xs)
-showStations (x:xs) = show x
+showStations (x:[]) = show x
+showStations (x:xs) = show x ++ " - " ++ showStations (xs)
 
 --could also be dependent of Train if it does not stop in all Stations, not implemented for simplification reasons
 getStationsBetween :: Failure StringException m => FromStation -> ToStation -> Stations -> m [Station]
