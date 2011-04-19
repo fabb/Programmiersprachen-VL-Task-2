@@ -1,5 +1,9 @@
 --Fabian Ehrentraud, Bernhard Urban, 2011
 
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module ReservationSystem where
 
 {---------- Imports ----------}
@@ -12,6 +16,11 @@ import Text.XML.HXT.Core
 import Text.XML.HXT.RelaxNG
  
 import System.Environment
+
+import Control.Failure
+import Control.Monad.Instances
+
+instance Failure e (Either e) where failure = Left
 
 
 {---------- Globals ----------}
@@ -85,6 +94,12 @@ data RItem = GroupReservation ReservationNumber GroupReservationData
              | IndividualReservation ReservationNumber IndividualReservationData
 type RCrumb = RItem 
 
+
+{---------- Failure String ----------}
+
+tryM :: Failure StringException m => String -> Maybe a -> m a
+tryM e Nothing = failureString e
+tryM e (Just x) = return x
 
 
 {---------- Main ----------} 
@@ -207,7 +222,7 @@ mNewIndividualReservation appdata = do
 					z <- return $ newIndividualReservation appdata startstation endstation trainid carid seatid
 			
 					case z of
-						Left error -> do
+						Left (StringException error) -> do
 							putStrLn error
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
@@ -245,7 +260,7 @@ mNewGroupReservation appdata = do
 					z <- return $ newGroupReservation appdata startstation endstation trainid carid seatcount
 			
 					case z of
-						Left error -> do
+						Left (StringException error) -> do
 							putStrLn error
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
@@ -283,7 +298,7 @@ mDeleteReservation appdata = do
 					z <- return $ deleteReservation appdata reservationnumber
 			
 					case z of
-						Left error -> do
+						Left (StringException error) -> do
 							putStrLn error
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
@@ -334,7 +349,7 @@ mShowGroupReservations appdata = do
 					z <- return $ groupReservations appdata trainid carid
 			
 					case z of
-						Left error -> putStrLn error
+						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right groupreservations -> if isREmpty groupreservations
 							then putStrLn $ "NO group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid
@@ -369,7 +384,7 @@ mShowIndividualReservations appdata = do
 					z <- return $ individualReservations appdata trainid carid seatid
 			
 					case z of
-						Left error -> putStrLn error
+						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right individualreservations -> if isREmpty individualreservations
 							then putStrLn $ "NO individual reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
@@ -404,7 +419,7 @@ mShowFreeSeats appdata = do
 					z <- return $ freeSeats appdata trainid carid startstation endstation
 			
 					case z of
-						Left error -> putStrLn error
+						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right seats -> do
 							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
@@ -461,8 +476,15 @@ readbound = do
 --read in the String to the wanted type
 --if not fitting to that type, returns Nothing
 --leading and trailing whitespaces are ignored (leading already by function reads)
-maybeReadTWS :: Read a => String -> Maybe a
-maybeReadTWS = fmap fst . listToMaybe . filter (null . dropWhile isSpace . snd) . reads
+maybeReadTWS :: (Failure StringException m, Read a) => String -> m a
+maybeReadTWS = (return . fst =<<) . (tryM "Error: Could not read wanted type" . listToMaybe) . filter (null . dropWhile isSpace . snd) . reads
+
+{-
+--like listToMaybe, but for all monads with a Failure instance
+listToF :: Failure StringException m => [a] -> m a
+listToF [] = failureString "Empty List"
+listToF (a:_) = return a
+-}
 
 --splits the given String into substrings
 --spaces separate substrings and are thrown away
@@ -479,7 +501,7 @@ tokenizeWS xs
 {---------- Real Working Functions ----------}
 
 --issues a new individual reservation when there is enough place left
-newIndividualReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> Either String (ApplicationData, ReservationNumber)
+newIndividualReservation :: Failure StringException m => ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> m (ApplicationData, ReservationNumber)
 newIndividualReservation appdata startstation endstation trainid carid seatid = do
 	newData1 <- return $ incIssuedReservations appdata
 	resnum <- return $ getIssuedReservations newData1
@@ -494,7 +516,7 @@ newIndividualReservation appdata startstation endstation trainid carid seatid = 
 		Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --issues a new group reservation when there is enough place left
-newGroupReservation :: ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> Either String (ApplicationData, ReservationNumber)
+newGroupReservation :: Failure StringException m => ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> m (ApplicationData, ReservationNumber)
 newGroupReservation appdata startstation endstation trainid carid seatcount = do
 	newData1 <- return $ incIssuedReservations appdata
 	resnum <- return $ getIssuedReservations newData1
@@ -509,7 +531,7 @@ newGroupReservation appdata startstation endstation trainid carid seatcount = do
 		Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --deletes the reservation with the given reservation number
-deleteReservation :: ApplicationData -> ReservationNumber -> Either String ApplicationData
+deleteReservation :: Failure StringException m => ApplicationData -> ReservationNumber -> m ApplicationData
 deleteReservation appdata reservationnumber = do
 	--changedZipper <- return $ fromMaybe (makeRZipper []) $ reservationDeleteCurrent zipper --test
 	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --test
@@ -517,62 +539,46 @@ deleteReservation appdata reservationnumber = do
 	--changedZipper <- return $ reservationTo reservationnumber (getReservationZipper appdata) >>= reservationDeleteCurrent
 	changedZipper <- return $ reservationDelete reservationnumber (getReservationZipper appdata)
 	case changedZipper of
-		Nothing -> Left "Error: No such Reservation found"
-		Just x -> Right $ setReservationZipper appdata x
+		Nothing -> failureString "Error: No such Reservation found"
+		Just x -> return $ setReservationZipper appdata x
 
 --calculates group reservations for given Train Car
-groupReservations :: ApplicationData -> TrainId -> CarId -> Either String [RItem]
+groupReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> m [RItem]
 groupReservations appdata trainid carid = do
 	trains <- return $ getTrains appdata
 	if existsTrain trainid trains
-		then Right True else Left "Error: No such Train-ID"
+		then return True else failureString "Error: No such Train-ID"
 	if existsTrainCar trainid carid trains
-		then Right True else Left "Error: No such Car-ID attached to existing Train-ID"
+		then return True else failureString "Error: No such Car-ID attached to existing Train-ID"
 	res <- return $ unpackRZipper $ getReservationZipper appdata
 	return $ filterTrainCar trainid carid $ filterGroupReservations res
 
 --calculates individual reservations for the given seat (in the given car (which is part of the given train))
-individualReservations :: ApplicationData -> TrainId -> CarId -> SeatId -> Either String [RItem]
+individualReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> m [RItem]
 individualReservations appdata trainid carid seatid = do
 	trains <- return $ getTrains appdata
 	if existsTrain trainid trains
-		then Right True else Left "Error: No such Train-ID"
+		then return True else failureString "Error: No such Train-ID"
 	if existsTrainCar trainid carid trains
-		then Right True else Left "Error: No such Car-ID attached to existing Train-ID"
+		then return True else failureString "Error: No such Car-ID attached to existing Train-ID"
 	if existsTrainCarSeat trainid carid seatid trains
-		then Right True else Left "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
+		then return True else failureString "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
 	res <- return $ unpackRZipper $ getReservationZipper appdata
 	return $ filterTrainCarSeat trainid carid seatid $ filterIndividualReservations res --filterIndividualReservations wouldn't be necessary as filterTrainCarSeat already does that
 
 --calculates minimum free seat count in given Train Car between given Stations
 --if the train is so full as a whole (minimum free seats per train) that it's free seats , that value will be displayed instead
-freeSeats :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Either String SeatCount
+freeSeats :: Failure StringException m => ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> m SeatCount
 freeSeats appdata trainid carid startstation endstation = do
-	--TODO more specific error messages, needs Either Monad output from freeSeatsCar
-
-	minfree <- maybe
-		(Left "Error: Could not get details for Train")
-		Right $ return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
-	
-	{-
-	trainseatcount <- maybe
-		(Left "Error: Could not get details for Train")
-		Right $ return (getTrains appdata) >>= getSeatCountTrainId trainid
-	-}
-	
-	trainfree <- maybe
-		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
-		Right $ freeSeatsTrain appdata trainid startstation endstation
-	
-	carfree <- maybe
-		(Left $ "Error: Could not get Seats for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between Stations " ++ show startstation ++ " and " ++ show endstation)
-		Right $ freeSeatsCar appdata trainid carid startstation endstation
-	
+	minfree <- return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
+	--trainseatcount <- return (getTrains appdata) >>= getSeatCountTrainId trainid	
+	trainfree <- freeSeatsTrain appdata trainid startstation endstation
+	carfree <- freeSeatsCar appdata trainid carid startstation endstation
 	return $ min carfree (trainfree - minfree)
 
 
 --returns the number of free seats for the given Train between the provided stations
-freeSeatsTrain :: ApplicationData -> TrainId -> FromStation -> ToStation -> Maybe Integer
+freeSeatsTrain :: Failure StringException m => ApplicationData -> TrainId -> FromStation -> ToStation -> m Integer
 freeSeatsTrain appdata trainid fromstation tostation = do
 	stations <- return $ getStations appdata
 	trains <- return $ getTrains appdata
@@ -582,7 +588,7 @@ freeSeatsTrain appdata trainid fromstation tostation = do
 	return $ wholeseats - used
 
 --returns the number of free seats for the given Train Car between the provided stations
-freeSeatsCar :: ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> Maybe Integer
+freeSeatsCar :: Failure StringException m => ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> m Integer
 freeSeatsCar appdata trainid carid fromstation tostation = do
 	stations <- return $ getStations appdata
 	trains <- return $ getTrains appdata
@@ -592,7 +598,7 @@ freeSeatsCar appdata trainid carid fromstation tostation = do
 	return $ wholeseats - used
 
 --returns the number of free seats for the given Seat between the provided stations (1 or 0)
-freeSeat :: ApplicationData -> TrainId -> CarId -> SeatId -> FromStation -> ToStation -> Maybe Integer
+freeSeat :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> FromStation -> ToStation -> m Integer
 freeSeat appdata trainid carid seatid fromstation tostation = do
 	stations <- return $ getStations appdata
 	res <- return $ unpackRZipper $ getReservationZipper appdata
@@ -605,7 +611,7 @@ freeSeat appdata trainid carid seatid fromstation tostation = do
 --calculates whether the given, not yet issued, reservation is possible
 --also checks whether StartStation and EndStation are valid
 --Bool does not hold any information
-isReservationPossible :: ApplicationData -> RItem -> Either String Bool
+isReservationPossible :: Failure StringException m => ApplicationData -> RItem -> m Bool
 
 isReservationPossible appdata ritem =
 	if isGroupReservation ritem then do
@@ -613,31 +619,29 @@ isReservationPossible appdata ritem =
 		freeseats <- freeSeats appdata (getRTrainId ritem) (getRCarId ritem) (getRFromStationId ritem) (getRToStationId ritem)
 		groupseats <- maybe
 			(error "Program Error: Could not get Seat Count for Group Reservation")
-			Right $ getRSeatCount ritem
+			return $ getRSeatCount ritem
 		
 		if freeseats >= groupseats
-			then Right True
-			else Left "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
+			then return True
+			else failureString "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
 
 	else if isIndividualReservation ritem then do
 		seatid <- maybe
 			(error "Program Error: Could not get Seat-ID for Individual Reservation")
-			Right $ getRSeatId ritem
+			return $ getRSeatId ritem
 
-		isseatfree <- maybe
-			(Left "Error: Could not calculate whether Seat is free within the provided Stations")
-			Right $ freeSeat appdata (getRTrainId ritem) (getRCarId ritem) seatid (getRFromStationId ritem) (getRToStationId ritem)
+		isseatfree <- freeSeat appdata (getRTrainId ritem) (getRCarId ritem) seatid (getRFromStationId ritem) (getRToStationId ritem)
 		
 		if isseatfree >= 1
-			then Right True
-			else Left "Fail: Could not issue Individual Reservation - Seat is already reserved, at least on part of the provided Station Range"
+			then return True
+			else failureString "Fail: Could not issue Individual Reservation - Seat is already reserved, at least on part of the provided Station Range"
 		
 		--freeSeats does also take account for minFreeSeats
 		freeseats <- freeSeats appdata (getRTrainId ritem) (getRCarId ritem) (getRFromStationId ritem) (getRToStationId ritem)
 		
 		if freeseats >= 1
-			then Right True
-			else Left "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
+			then return True
+			else failureString "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
 	
 	else error "Program Error: Unknown Reservation Type encountered"
 
@@ -679,18 +683,18 @@ showStations (x:y:xs) = show x ++ " - " ++ showStations (y:xs)
 showStations (x:xs) = show x
 
 --could also be dependent of Train if it does not stop in all Stations, not implemented for simplification reasons
-getStationsBetween :: FromStation -> ToStation -> Stations -> Maybe [Station]
+getStationsBetween :: Failure StringException m => FromStation -> ToStation -> Stations -> m [Station]
 getStationsBetween = takeRange
 
 
 --gets the range from the given list where all items between and including the first occurrence of the "first" item and the first ocurrence of the "last" item are returned
 --when the "first" item occurrs after the "last" item in the given list, the result is reversed in order to let the "first" item really appear first
-takeRange :: Eq a => a -> a -> [a] -> Maybe [a]
+takeRange :: (Failure StringException m, Eq a) => a -> a -> [a] -> m [a]
 takeRange first last list
-	| notElem first list || notElem last list = Nothing
-	| first == last = Just [first]
-	| occurrsBefore first last list = Just $ takeWhileInclusive (/=last) $ dropWhile (/=first) list
-	| not $ occurrsBefore first last list = Just $ reverse $ takeWhileInclusive (/=first) $ dropWhile (/=last) list
+	| notElem first list || notElem last list = failureString "Error: Provided First and Last Elements not part of List"
+	| first == last = return [first]
+	| occurrsBefore first last list = return $ takeWhileInclusive (/=last) $ dropWhile (/=first) list
+	| not $ occurrsBefore first last list = return $ reverse $ takeWhileInclusive (/=first) $ dropWhile (/=last) list
 
 --returns whether the first element occurrs before the second one in the given list
 --when the two elements are equal, return False
@@ -707,25 +711,25 @@ takeWhileInclusive p (x:xs)
 
 
 --maps the function f over all inbetween stations, returns Nothing when FromStation==ToStation
-mapStationsM :: (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> Maybe [a]
+mapStationsM :: Failure StringException m => (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> m [a]
 mapStationsM f fromstation tostation stations = sfe
 	where
 		sf = mapStations f fromstation tostation stations 
 		sfe = if fromstation == tostation
-			then Nothing
+			then failureString "Error: Starting-Station-ID same as Destination-Station-ID"
 			else sf
 
 --maps the function f over all inbetween stations
-mapStations :: (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> Maybe [a]
-mapStations f fromstation tostation stations = fmap (map (\ (from,to) -> f from to stations)) (stationTuples fromstation tostation stations)
+mapStations :: Failure StringException m => (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> m [a]
+mapStations f fromstation tostation stations = (return . (map (\ (from,to) -> f from to stations)) =<<) (stationTuples fromstation tostation stations)
 
 
 --calculates tuples of stations next to each other in the given range
-stationTuples :: FromStation -> ToStation -> Stations -> Maybe [(Station,Station)]
+stationTuples :: Failure StringException m => FromStation -> ToStation -> Stations -> m [(Station,Station)]
 stationTuples fromstation tostation stations = tuples
 	where
 		stationrange = getStationsBetween fromstation tostation stations
-		tuples = fmap tuplifyNeighbors stationrange
+		tuples = (return . tuplifyNeighbors =<<) stationrange
 
 --converts a list into a list with tuples of adjacent elements from the original list
 tuplifyNeighbors :: [a] -> [(a,a)]
@@ -787,19 +791,19 @@ getSeatIds :: Seats -> [SeatId]
 getSeatIds seats = map getSeatId seats
 
 
-getTrain :: TrainId -> Trains -> Maybe Train
-getTrain tId trains = find (\ t -> getTrainId t == tId) trains
+getTrain :: Failure StringException m => TrainId -> Trains -> m Train
+getTrain tId trains = tryM "Error: Train-ID not found" $ find (\ t -> getTrainId t == tId) trains
 
-getCar :: CarId -> Train -> Maybe Car
-getCar cId train = find (\ c -> getCarId c == cId) $ getCars train
+getCar :: Failure StringException m => CarId -> Train -> m Car
+getCar cId train = tryM "Error: Car-ID not found" $ find (\ c -> getCarId c == cId) $ getCars train
 
-getTrainCar :: TrainId -> CarId -> Trains -> Maybe Car
+getTrainCar :: Failure StringException m => TrainId -> CarId -> Trains -> m Car
 getTrainCar tId cId trains = getTrain tId trains >>= getCar cId
 
-getSeat :: SeatId -> Car -> Maybe Seat
-getSeat sId car = find (\ s -> getSeatId s == sId) $ getSeats car
+getSeat :: Failure StringException m => SeatId -> Car -> m Seat
+getSeat sId car = tryM "Error: Seat-ID not found" $ find (\ s -> getSeatId s == sId) $ getSeats car
 
-getTrainCarSeat :: TrainId -> CarId -> SeatId -> Trains -> Maybe Seat
+getTrainCarSeat :: Failure StringException m => TrainId -> CarId -> SeatId -> Trains -> m Seat
 getTrainCarSeat tId cId sId trains = getTrain tId trains >>= getCar cId >>= getSeat sId
 
 
@@ -830,11 +834,11 @@ instance SeatCountable Car where
 -}
 
 
-getSeatCountTrainId :: TrainId -> Trains -> Maybe Integer
-getSeatCountTrainId trainid trains = fmap getSeatCountTrain $ getTrain trainid trains
+getSeatCountTrainId :: Failure StringException m => TrainId -> Trains -> m Integer
+getSeatCountTrainId trainid trains = (return . getSeatCountTrain =<<) (getTrain trainid trains)
 
-getSeatCountTrainCarId :: TrainId -> CarId -> Trains -> Maybe Integer
-getSeatCountTrainCarId trainid carid trains = fmap getSeatCountCar $ getTrainCar trainid carid trains
+getSeatCountTrainCarId :: Failure StringException m => TrainId -> CarId -> Trains -> m Integer
+getSeatCountTrainCarId trainid carid trains = (return . getSeatCountCar =<<) (getTrainCar trainid carid trains)
 
 
 getSeatCountTrain :: Train -> Integer
@@ -918,69 +922,69 @@ getUsedSeatCountTrainCarSeat fromstation tostation stations trainid carid seatid
 
 --calculates the maximum used seats for the given Train in the given Station range
 --takes care of overlapping and non-overlapping reservations
-getUsedSeatCountTrainMaximum :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainMaximum fromstation tostation stations trainid ritems = maybeMaximum =<< getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems
+getUsedSeatCountTrainMaximum :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> m SeatCount
+getUsedSeatCountTrainMaximum fromstation tostation stations trainid ritems = maximumF =<< getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems
 
 --calculates the maximum used seats for the given Car in the given Station range
 --takes care of overlapping and non-overlapping reservations
-getUsedSeatCountTrainCarMaximum :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid ritems = maybeMaximum =<< getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems
+getUsedSeatCountTrainCarMaximum :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> m SeatCount
+getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid ritems = maximumF =<< getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems
 
 --calculates the maximum used seats for the given Seat in the given Station range
 --takes care of overlapping and non-overlapping reservations
-getUsedSeatCountTrainCarSeatMaximum :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> Maybe SeatCount
-getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid ritems = maybeMaximum =<< getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems
+getUsedSeatCountTrainCarSeatMaximum :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> m SeatCount
+getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid ritems = maximumF =<< getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems
 
 
 --calculates the maximum of the list
---returns Nothing only when the list is empty
-maybeMaximum :: Ord a => [a] -> Maybe a
-maybeMaximum [] = Nothing
-maybeMaximum ls = Just $ maximum ls
+--returns Failure only when the list is empty
+maximumF :: (Failure StringException m, Ord a) => [a] -> m a
+maximumF [] = failureString "Error: List is empty"
+maximumF ls = return $ maximum ls
 
 
 --calculates the reservations for the given Train for all stations in the given range
-getUsedSeatCountTrainStationwise :: FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainStationwise :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> [RItem] -> m [SeatCount]
 getUsedSeatCountTrainStationwise fromstation tostation stations trainid ritems = 
-	fmap (map (\ f -> f trainid ritems)) (mapStationsM getUsedSeatCountTrain fromstation tostation stations)
+	(return . (map (\ f -> f trainid ritems)) =<<) (mapStationsM getUsedSeatCountTrain fromstation tostation stations)
 
 --calculates the reservations for the given Car for all stations in the given range
-getUsedSeatCountTrainCarStationwise :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainCarStationwise :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> CarId -> [RItem] -> m [SeatCount]
 getUsedSeatCountTrainCarStationwise fromstation tostation stations trainid carid ritems = 
-	fmap (map (\ f -> f trainid carid ritems)) (mapStationsM getUsedSeatCountTrainCar fromstation tostation stations)
+	(return . (map (\ f -> f trainid carid ritems)) =<<) (mapStationsM getUsedSeatCountTrainCar fromstation tostation stations)
 
 --calculates the reservations for the given Seat for all stations in the given range
-getUsedSeatCountTrainCarSeatStationwise :: FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> Maybe [SeatCount]
+getUsedSeatCountTrainCarSeatStationwise :: Failure StringException m => FromStation -> ToStation -> Stations -> TrainId -> CarId -> SeatId -> [RItem] -> m [SeatCount]
 getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid carid seatid ritems = 
-	fmap (map (\ f -> f trainid carid seatid ritems)) (mapStationsM getUsedSeatCountTrainCarSeat fromstation tostation stations)
+	(return . (map (\ f -> f trainid carid seatid ritems)) =<<) (mapStationsM getUsedSeatCountTrainCarSeat fromstation tostation stations)
 
 
 {---------- Access RItem ----------}
 
 --creates a new Individual Reservation
 --checks parameters for validity - except to ReservationNumber
-newRIndividualReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> Either String RItem
+newRIndividualReservation :: Failure StringException m => ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> m RItem
 newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = do
 	checkRReservationData fromstation tostation trainid carid stations trains
-	if existsTrainCarSeat trainid carid seatid trains then return True else Left "Error: Seat-ID does not exist"
+	if existsTrainCarSeat trainid carid seatid trains then return True else failureString "Error: Seat-ID does not exist"
 	return (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid))
 
 --creates a new Individual Reservation
 --checks parameters for validity - except to ReservationNumber
-newRGroupReservation :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> Either String RItem
+newRGroupReservation :: Failure StringException m => ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> m RItem
 newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = do
 	checkRReservationData fromstation tostation trainid carid stations trains
-	if seatcount > 1 then return True else Left "Error: Seat-Count must be at least 2"
+	if seatcount > 1 then return True else failureString "Error: Seat-Count must be at least 2"
 	return (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
 
 --checks parameters, which are common to group and individual reservations, for validity
-checkRReservationData :: FromStation -> ToStation -> TrainId -> CarId -> Stations -> Trains -> Either String Bool
+checkRReservationData :: Failure StringException m => FromStation -> ToStation -> TrainId -> CarId -> Stations -> Trains -> m Bool
 checkRReservationData fromstation tostation trainid carid stations trains = do
-	if existsStation fromstation stations then return True else Left "Error: Starting-Station-ID does not exist"
-	if existsStation tostation stations then return True else Left "Error: Destination-Station-ID does not exist"
-	if fromstation /= tostation then return True else Left "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
-	if existsTrain trainid trains then return True else Left "Error: Train-ID does not exist"
-	if existsTrainCar trainid carid trains then return True else Left "Error: Car-ID does not exist"
+	if existsStation fromstation stations then return True else failureString "Error: Starting-Station-ID does not exist"
+	if existsStation tostation stations then return True else failureString "Error: Destination-Station-ID does not exist"
+	if fromstation /= tostation then return True else failureString "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
+	if existsTrain trainid trains then return True else failureString "Error: Train-ID does not exist"
+	if existsTrainCar trainid carid trains then return True else failureString "Error: Car-ID does not exist"
 
 
 isGroupReservation :: RItem -> Bool
@@ -1012,13 +1016,13 @@ getRCarId :: RItem -> CarId
 getRCarId (IndividualReservation _ (_,_,_,carid,_)) = carid
 getRCarId (GroupReservation _ (_,_,_,carid,_)) = carid
 
-getRSeatId :: RItem -> Maybe SeatId
-getRSeatId (IndividualReservation _ (_,_,_,_,seatid)) = Just seatid
-getRSeatId (GroupReservation _ _) = Nothing
+getRSeatId :: Failure StringException m => RItem -> m SeatId
+getRSeatId (IndividualReservation _ (_,_,_,_,seatid)) = return seatid
+getRSeatId (GroupReservation _ _) = failureString "Error: Cannot get Seat-ID as GroupReservation present"
 
-getRSeatCount :: RItem -> Maybe SeatCount
-getRSeatCount (GroupReservation _ (_,_,_,_,seatcount)) = Just seatcount
-getRSeatCount (IndividualReservation _ _) = Nothing
+getRSeatCount :: Failure StringException m => RItem -> m SeatCount
+getRSeatCount (GroupReservation _ (_,_,_,_,seatcount)) = return seatcount
+getRSeatCount (IndividualReservation _ _) = failureString "Error: Cannot get Seat-Count as IndividualReservation present"
 
 
 getRUsedSeats :: RItem -> SeatCount
@@ -1028,17 +1032,13 @@ getRUsedSeats (IndividualReservation _ _) = 1
 
 
 --checks whether the given reservation is active between the given stations
-isActiveBetween :: FromStation -> ToStation -> Stations -> RItem -> Maybe Bool
-isActiveBetween fromstation tostation stations ritem =
-	if fromstation == tostation
-	then Nothing
-	else isInfixOfMaybe checkstations resstations
-	where
-		resstations = getStationsBetween (getRFromStationId ritem) (getRToStationId ritem) stations --stations the reservation is active for
-		checkstations = getStationsBetween fromstation tostation stations --stations inbetween the given bounds - this must be a subset
-		--direction is important, so also compare order
-		isInfixOfMaybe (Just x) (Just y) = Just $ isInfixOf x y
-		isInfixOfMaybe _ _ = Nothing
+isActiveBetween :: Failure StringException m => FromStation -> ToStation -> Stations -> RItem -> m Bool
+isActiveBetween fromstation tostation stations ritem = do
+	if fromstation /= tostation then return True
+		else failureString "Error: Starting-Station-ID is the same as Destination-Station-ID"
+	resstations <- getStationsBetween (getRFromStationId ritem) (getRToStationId ritem) stations --stations the reservation is active for
+	checkstations <- getStationsBetween fromstation tostation stations --stations inbetween the given bounds - this must be a subset
+	return $ isInfixOf checkstations resstations
 
 
 {---------- Zipper Stuff ----------}
@@ -1049,30 +1049,30 @@ makeRZipper xs = (xs, [])
 
 --unpacks the zipper back to a list of reservations
 unpackRZipper :: ReservationZipper -> [RItem]
-unpackRZipper z = maybe [] fst $ goFirst z
+unpackRZipper z = maybe [] fst $ goFirst z --TODO this binds the return type of goFirst to the Maybe Monad - is there another way?
 
 --forwards for one item
-goForward :: ReservationZipper -> Maybe ReservationZipper
-goForward (x:xs, bs) = Just (xs, x:bs)
-goForward ([], _) = Nothing
+goForward :: Failure StringException m => ReservationZipper -> m ReservationZipper
+goForward (x:xs, bs) = return (xs, x:bs)
+goForward ([], _) = failureString "Could not go forward in Zipper, as already at the end"
 
 --rewinds to the previous item
-goBack :: ReservationZipper -> Maybe ReservationZipper
-goBack (xs, b:bs) = Just (b:xs, bs)
-goBack (_, []) = Nothing
+goBack :: Failure StringException m => ReservationZipper -> m ReservationZipper
+goBack (xs, b:bs) = return (b:xs, bs)
+goBack (_, []) = failureString "Could not go back in Zipper, as already at the beginning"
 
 --rewinds to the first item
-goFirst :: ReservationZipper -> Maybe ReservationZipper
+goFirst :: Failure StringException m => ReservationZipper -> m ReservationZipper
 goFirst z@(xs, b:bs) = goBack z >>= goFirst
-goFirst z@(_, []) = Just z
+goFirst z@(_, []) = return z
 
 --forwards until after the last item
-goLast :: ReservationZipper -> Maybe ReservationZipper
+goLast :: Failure StringException m => ReservationZipper -> m ReservationZipper
 goLast z@(x:xs, bs) = goForward z >>= goLast
-goLast z@([], _) = Just z
+goLast z@([], _) = return z
 
 --sets the current item to the one with the given number
-reservationTo :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
+reservationTo :: Failure StringException m => ReservationNumber -> ReservationZipper -> m ReservationZipper
 reservationTo resnum z@(xs, bs) = do
 	(items, _) <- goFirst z
 	(ls, item:rs) <- return $ break (reservationIs resnum) items
@@ -1083,20 +1083,20 @@ reservationIs :: ReservationNumber -> RItem -> Bool
 reservationIs resnum ritem = resnum == getRReservationNumber ritem
 
 --inserts a new reservation before the current item
-reservationNew :: RItem -> ReservationZipper -> Maybe ReservationZipper
-reservationNew item (xs, bs) = Just (item:xs, bs)
+reservationNew :: Failure StringException m => RItem -> ReservationZipper -> m ReservationZipper
+reservationNew item (xs, bs) = return (item:xs, bs)
 
 --inserts a new reservation as last item
-reservationNewLast :: RItem -> ReservationZipper -> Maybe ReservationZipper
+reservationNewLast :: Failure StringException m => RItem -> ReservationZipper -> m ReservationZipper
 reservationNewLast item z = goLast z >>= reservationNew item
 
 --delete the current item
-reservationDeleteCurrent :: ReservationZipper -> Maybe ReservationZipper
+reservationDeleteCurrent :: Failure StringException m => ReservationZipper -> m ReservationZipper
 reservationDeleteCurrent (x:xs, bs) = return (xs, bs)
-reservationDeleteCurrent ([], _) = Nothing
+reservationDeleteCurrent ([], _) = failureString "Could not delete current item, as at the end of the Zipper"
 
 --deletes the reservation with the given number
-reservationDelete :: ReservationNumber -> ReservationZipper -> Maybe ReservationZipper
+reservationDelete :: Failure StringException m => ReservationNumber -> ReservationZipper -> m ReservationZipper
 reservationDelete resnum z = reservationTo resnum z >>= reservationDeleteCurrent
 
 
