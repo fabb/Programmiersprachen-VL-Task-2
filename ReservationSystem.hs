@@ -1071,10 +1071,12 @@ goLast z@([], _) = return z
 
 --sets the current item to the one with the given number
 reservationTo :: Failure StringException m => ReservationNumber -> ReservationZipper -> m ReservationZipper
-reservationTo resnum z@(xs, bs) = do
-	(items, _) <- goFirst z
-	(ls, item:rs) <- return $ break (reservationIs resnum) items
-	return (item:rs, reverse ls) --TODO better without break but with recursive goForward?
+reservationTo resnum z = goFirst z >>= reservationTo' resnum
+	where
+		reservationTo' resnum zp@(x:xs, bs)
+			| reservationIs resnum x = return zp
+			| otherwise = goForward zp >>= reservationTo' resnum
+		reservationTo' resnum ([], _) = failureString "Could not find given Reservation Number in Zipper"
 
 --True when the given item has the given reservation number
 reservationIs :: ReservationNumber -> RItem -> Bool
