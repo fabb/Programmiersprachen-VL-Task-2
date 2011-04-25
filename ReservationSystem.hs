@@ -213,18 +213,15 @@ mNewIndividualReservation appdata = do
 	putStrLn $ "Please input Starting-Station-ID, Destination-Station-ID, Train-ID, Car-ID and Seat-ID separated by spaces"
 	
 	l <- getLine
-	x <- return $ tokenizeWS l
 	
 	putStrLn ""
 	
-	newD <- case x of
+	newD <- case tokenizeWS l of
 		[startstation, endstation, trainid, carid, seatid] -> do
-			y <- return (maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId, maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatid :: Maybe SeatId)
-			case y of
+			case (maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId, maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatid :: Maybe SeatId) of
 				(Just startstation, Just endstation, Just trainid, Just carid, Just seatid) -> do
-					z <- return $ newIndividualReservation appdata startstation endstation trainid carid seatid
 			
-					case z of
+					case newIndividualReservation appdata startstation endstation trainid carid seatid of
 						Left (StringException error) -> do
 							putStrLn error
 							return appdata
@@ -251,18 +248,15 @@ mNewGroupReservation appdata = do
 	putStrLn $ "Please input Starting-Station-ID, Destination-Station-ID, Train-ID, Car-ID and Seat-Count separated by spaces"
 	
 	l <- getLine
-	x <- return $ tokenizeWS l
 	
 	putStrLn ""
 	
-	newD <- case x of
+	newD <- case tokenizeWS l of
 		[startstation, endstation, trainid, carid, seatcount] -> do
-			y <- return (maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId, maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatcount :: Maybe SeatCount)
-			case y of
+			case (maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId, maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatcount :: Maybe SeatCount) of
 				(Just startstation, Just endstation, Just trainid, Just carid, Just seatcount) -> do
-					z <- return $ newGroupReservation appdata startstation endstation trainid carid seatcount
 			
-					case z of
+					case newGroupReservation appdata startstation endstation trainid carid seatcount of
 						Left (StringException error) -> do
 							putStrLn error
 							return appdata
@@ -289,18 +283,15 @@ mDeleteReservation appdata = do
 	putStrLn $ "Please input the Reservation-Number"
 	
 	l <- getLine
-	x <- return $ tokenizeWS l
 	
 	putStrLn ""
 	
-	newD <- case x of
+	newD <- case tokenizeWS l of
 		[reservationnumber] -> do
-			y <- return (maybeReadTWS reservationnumber :: Maybe ReservationNumber)
-			case y of
+			case (maybeReadTWS reservationnumber :: Maybe ReservationNumber) of
 				(Just reservationnumber) -> do
-					z <- return $ deleteReservation appdata reservationnumber
 			
-					case z of
+					case deleteReservation appdata reservationnumber of
 						Left (StringException error) -> do
 							putStrLn error
 							return appdata
@@ -340,18 +331,15 @@ mShowGroupReservations appdata = do
 	putStrLn $ "Please input Train-ID and Car-ID separated by spaces"
 	
 	l <- getLine
-	x <- return $ tokenizeWS l
 	
 	putStrLn ""
 	
-	case x of
+	case tokenizeWS l of
 		[trainid, carid] -> do
-			y <- return (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId)
-			case y of
+			case (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId) of
 				(Just trainid, Just carid) -> do
-					z <- return $ groupReservations appdata trainid carid
 			
-					case z of
+					case groupReservations appdata trainid carid of
 						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right groupreservations -> if isREmpty groupreservations
@@ -375,18 +363,15 @@ mShowIndividualReservations appdata = do
 	putStrLn $ "Please input Train-ID, Car-ID and Seat-ID separated by spaces"
 	
 	l <- getLine
-	x <- return $ tokenizeWS l
 	
 	putStrLn ""
 	
-	case x of
+	case tokenizeWS l of
 		[trainid, carid, seatid] -> do
-			y <- return (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatid :: Maybe SeatId)
-			case y of
+			case (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS seatid :: Maybe SeatId) of
 				(Just trainid, Just carid, Just seatid) -> do
-					z <- return $ individualReservations appdata trainid carid seatid
 			
-					case z of
+					case individualReservations appdata trainid carid seatid of
 						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right individualreservations -> if isREmpty individualreservations
@@ -410,18 +395,15 @@ mShowFreeSeats appdata = do
 	putStrLn $ "Please input Train-ID, Car-ID, Starting-Station-ID and Destination-Station-ID separated by spaces"
 	
 	l <- getLine
-	x <- return $ tokenizeWS l
 	
 	putStrLn ""
 	
-	case x of
+	case tokenizeWS l of
 		[trainid, carid, startstation, endstation] -> do
-			y <- return (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId)
-			case y of
+			case (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId) of
 				(Just trainid, Just carid, Just startstation, Just endstation) -> do
-					z <- return $ freeSeats appdata trainid carid startstation endstation
 			
-					case z of
+					case freeSeats appdata trainid carid startstation endstation of
 						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right seats -> do
@@ -506,30 +488,30 @@ tokenizeWS xs
 --issues a new individual reservation when there is enough place left
 newIndividualReservation :: Failure StringException m => ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatId -> m (ApplicationData, ReservationNumber)
 newIndividualReservation appdata startstation endstation trainid carid seatid = do
-	newData1 <- return $ incIssuedReservations appdata
-	resnum <- return $ getIssuedReservations newData1
-	stations <- return $ getStations appdata
-	trains <- return $ getTrains appdata
+	let
+		newData1 = incIssuedReservations appdata
+		resnum = getIssuedReservations newData1
+		stations = getStations appdata
+		trains = getTrains appdata
+		rz = getReservationZipper newData1
 	newIR <- newRIndividualReservation resnum (startstation, endstation, trainid, carid, seatid) stations trains
 	isReservationPossible appdata newIR
-	rz <- return $ getReservationZipper newData1
-	mrz <- return $ reservationNewLast newIR rz
-	case mrz of
+	case reservationNewLast newIR rz of
 		Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
 		Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
 --issues a new group reservation when there is enough place left
 newGroupReservation :: Failure StringException m => ApplicationData -> FromStation -> ToStation -> TrainId -> CarId -> SeatCount -> m (ApplicationData, ReservationNumber)
 newGroupReservation appdata startstation endstation trainid carid seatcount = do
-	newData1 <- return $ incIssuedReservations appdata
-	resnum <- return $ getIssuedReservations newData1
-	stations <- return $ getStations appdata
-	trains <- return $ getTrains appdata
+	let
+		newData1 = incIssuedReservations appdata
+		resnum = getIssuedReservations newData1
+		stations = getStations appdata
+		trains = getTrains appdata
+		rz = getReservationZipper newData1
 	newGR <- newRGroupReservation resnum (startstation, endstation, trainid, carid, seatcount) stations trains
 	isReservationPossible appdata newGR
-	rz <- return $ getReservationZipper newData1
-	mrz <- return $ reservationNewLast newGR rz
-	case mrz of
+	case reservationNewLast newGR rz of
 		Nothing -> error "Program Error, could not add new reservation" --could also return a Left for not aborting program
 		Just newData2 -> return (setReservationZipper newData1 newData2, resnum)
 
@@ -540,7 +522,7 @@ deleteReservation appdata reservationnumber = do
 	--changedZipper <- maybeDo zipper (\ z -> reservationDeleteCurrent z) "Error: Could not delete first item" --test
 	--changedZipper <- return $ reservationDeleteCurrent (getReservationZipper appdata) --test, just deletes first item
 	--changedZipper <- return $ reservationTo reservationnumber (getReservationZipper appdata) >>= reservationDeleteCurrent
-	changedZipper <- return $ reservationDelete reservationnumber (getReservationZipper appdata)
+	let changedZipper = reservationDelete reservationnumber (getReservationZipper appdata)
 	case changedZipper of
 		Nothing -> failureString "Error: No such Reservation found"
 		Just x -> return $ setReservationZipper appdata x
@@ -548,20 +530,22 @@ deleteReservation appdata reservationnumber = do
 --calculates group reservations for given Train Car
 groupReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> m [RItem]
 groupReservations appdata trainid carid = do
-	trains <- return $ getTrains appdata
+	let
+		trains = getTrains appdata
+		res = unpackRZipper $ getReservationZipper appdata
 	unless (existsTrain trainid trains) $ failureString "Error: No such Train-ID"
 	unless (existsTrainCar trainid carid trains) $ failureString "Error: No such Car-ID attached to existing Train-ID"
-	res <- return $ unpackRZipper $ getReservationZipper appdata
 	return $ filterTrainCar trainid carid $ filterGroupReservations res
 
 --calculates individual reservations for the given seat (in the given car (which is part of the given train))
 individualReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> m [RItem]
 individualReservations appdata trainid carid seatid = do
-	trains <- return $ getTrains appdata
+	let
+		trains = getTrains appdata
+		res = unpackRZipper $ getReservationZipper appdata
 	unless (existsTrain trainid trains) $ failureString "Error: No such Train-ID"
 	unless (existsTrainCar trainid carid trains) $ failureString "Error: No such Car-ID attached to existing Train-ID"
 	unless (existsTrainCarSeat trainid carid seatid trains) $ failureString "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
-	res <- return $ unpackRZipper $ getReservationZipper appdata
 	return $ filterTrainCarSeat trainid carid seatid $ filterIndividualReservations res --filterIndividualReservations wouldn't be necessary as filterTrainCarSeat already does that
 
 --calculates minimum free seat count in given Train Car between given Stations
@@ -578,9 +562,10 @@ freeSeats appdata trainid carid startstation endstation = do
 --returns the number of free seats for the given Train between the provided stations
 freeSeatsTrain :: Failure StringException m => ApplicationData -> TrainId -> FromStation -> ToStation -> m Integer
 freeSeatsTrain appdata trainid fromstation tostation = do
-	stations <- return $ getStations appdata
-	trains <- return $ getTrains appdata
-	res <- return $ unpackRZipper $ getReservationZipper appdata
+	let
+		stations = getStations appdata
+		trains = getTrains appdata
+		res = unpackRZipper $ getReservationZipper appdata
 	wholeseats <- getSeatCountTrainId trainid trains
 	used <- getUsedSeatCountTrainMaximum fromstation tostation stations trainid res
 	return $ wholeseats - used
@@ -588,9 +573,10 @@ freeSeatsTrain appdata trainid fromstation tostation = do
 --returns the number of free seats for the given Train Car between the provided stations
 freeSeatsCar :: Failure StringException m => ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> m Integer
 freeSeatsCar appdata trainid carid fromstation tostation = do
-	stations <- return $ getStations appdata
-	trains <- return $ getTrains appdata
-	res <- return $ unpackRZipper $ getReservationZipper appdata
+	let
+		stations = getStations appdata
+		trains = getTrains appdata
+		res = unpackRZipper $ getReservationZipper appdata
 	wholeseats <- getSeatCountTrainCarId trainid carid trains
 	used <- getUsedSeatCountTrainCarMaximum fromstation tostation stations trainid carid res
 	return $ wholeseats - used
@@ -598,8 +584,9 @@ freeSeatsCar appdata trainid carid fromstation tostation = do
 --returns the number of free seats for the given Seat between the provided stations (1 or 0)
 freeSeat :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> FromStation -> ToStation -> m Integer
 freeSeat appdata trainid carid seatid fromstation tostation = do
-	stations <- return $ getStations appdata
-	res <- return $ unpackRZipper $ getReservationZipper appdata
+	let
+		stations = getStations appdata
+		res = unpackRZipper $ getReservationZipper appdata
 	used <- getUsedSeatCountTrainCarSeatMaximum fromstation tostation stations trainid carid seatid res
 	return $ 1 - used
 
@@ -1094,7 +1081,7 @@ reservationDelete resnum z = reservationTo resnum z >>= reservationDeleteCurrent
 writeData :: ApplicationData -> String -> IO ()
 writeData (_, _, icount, zipper) xmlFilename = do
 	putStrLn $ "Trying to write data to " ++ xmlFilename
-	res <- return $ unpackRZipper zipper
+	let res = unpackRZipper zipper
 	runX
 			( constA (icount, res)
 			>>>
