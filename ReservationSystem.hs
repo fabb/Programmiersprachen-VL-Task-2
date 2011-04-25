@@ -20,6 +20,7 @@ import Text.XML.HXT.RelaxNG
 import System.Environment
 
 import Control.Failure
+import Control.Monad
 import Control.Monad.Instances
 
 instance Failure e (Either e) where failure = Left
@@ -548,10 +549,8 @@ deleteReservation appdata reservationnumber = do
 groupReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> m [RItem]
 groupReservations appdata trainid carid = do
 	trains <- return $ getTrains appdata
-	if existsTrain trainid trains
-		then return True else failureString "Error: No such Train-ID"
-	if existsTrainCar trainid carid trains
-		then return True else failureString "Error: No such Car-ID attached to existing Train-ID"
+	unless (existsTrain trainid trains) $ failureString "Error: No such Train-ID"
+	unless (existsTrainCar trainid carid trains) $ failureString "Error: No such Car-ID attached to existing Train-ID"
 	res <- return $ unpackRZipper $ getReservationZipper appdata
 	return $ filterTrainCar trainid carid $ filterGroupReservations res
 
@@ -559,12 +558,9 @@ groupReservations appdata trainid carid = do
 individualReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> m [RItem]
 individualReservations appdata trainid carid seatid = do
 	trains <- return $ getTrains appdata
-	if existsTrain trainid trains
-		then return True else failureString "Error: No such Train-ID"
-	if existsTrainCar trainid carid trains
-		then return True else failureString "Error: No such Car-ID attached to existing Train-ID"
-	if existsTrainCarSeat trainid carid seatid trains
-		then return True else failureString "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
+	unless (existsTrain trainid trains) $ failureString "Error: No such Train-ID"
+	unless (existsTrainCar trainid carid trains) $ failureString "Error: No such Car-ID attached to existing Train-ID"
+	unless (existsTrainCarSeat trainid carid seatid trains) $ failureString "Error: No such Seat-ID in existing Car-ID attached to existing Train-ID"
 	res <- return $ unpackRZipper $ getReservationZipper appdata
 	return $ filterTrainCarSeat trainid carid seatid $ filterIndividualReservations res --filterIndividualReservations wouldn't be necessary as filterTrainCarSeat already does that
 
@@ -612,8 +608,7 @@ freeSeat appdata trainid carid seatid fromstation tostation = do
 
 --calculates whether the given, not yet issued, reservation is possible
 --also checks whether StartStation and EndStation are valid
---Bool does not hold any information
-isReservationPossible :: Failure StringException m => ApplicationData -> RItem -> m Bool
+isReservationPossible :: Failure StringException m => ApplicationData -> RItem -> m ()
 
 isReservationPossible appdata ritem
 	| isGroupReservation ritem = do
@@ -623,9 +618,7 @@ isReservationPossible appdata ritem
 			(error "Program Error: Could not get Seat Count for Group Reservation")
 			return $ getRSeatCount ritem
 		
-		if freeseats >= groupseats
-			then return True
-			else failureString "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
+		unless (freeseats >= groupseats) $ failureString "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
 
 	| isIndividualReservation ritem = do
 		seatid <- maybe
@@ -634,16 +627,12 @@ isReservationPossible appdata ritem
 
 		isseatfree <- freeSeat appdata (getRTrainId ritem) (getRCarId ritem) seatid (getRFromStationId ritem) (getRToStationId ritem)
 		
-		if isseatfree >= 1
-			then return True
-			else failureString "Fail: Could not issue Individual Reservation - Seat is already reserved, at least on part of the provided Station Range"
+		unless (isseatfree >= 1) $ failureString "Fail: Could not issue Individual Reservation - Seat is already reserved, at least on part of the provided Station Range"
 		
 		--freeSeats does also take account for minFreeSeats
 		freeseats <- freeSeats appdata (getRTrainId ritem) (getRCarId ritem) (getRFromStationId ritem) (getRToStationId ritem)
 		
-		if freeseats >= 1
-			then return True
-			else failureString "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
+		unless (freeseats >= 1) $ failureString "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
 	
 	| otherwise = error "Program Error: Unknown Reservation Type encountered"
 
@@ -964,7 +953,7 @@ getUsedSeatCountTrainCarSeatStationwise fromstation tostation stations trainid c
 newRIndividualReservation :: Failure StringException m => ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> Stations -> Trains -> m RItem
 newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = do
 	checkRReservationData fromstation tostation trainid carid stations trains
-	if existsTrainCarSeat trainid carid seatid trains then return True else failureString "Error: Seat-ID does not exist"
+	unless (existsTrainCarSeat trainid carid seatid trains) $ failureString "Error: Seat-ID does not exist"
 	return (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid))
 
 --creates a new Individual Reservation
@@ -972,17 +961,17 @@ newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid
 newRGroupReservation :: Failure StringException m => ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> Stations -> Trains -> m RItem
 newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = do
 	checkRReservationData fromstation tostation trainid carid stations trains
-	if seatcount > 1 then return True else failureString "Error: Seat-Count must be at least 2"
+	unless (seatcount > 1) $ failureString "Error: Seat-Count must be at least 2"
 	return (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
 
 --checks parameters, which are common to group and individual reservations, for validity
-checkRReservationData :: Failure StringException m => FromStation -> ToStation -> TrainId -> CarId -> Stations -> Trains -> m Bool
+checkRReservationData :: Failure StringException m => FromStation -> ToStation -> TrainId -> CarId -> Stations -> Trains -> m ()
 checkRReservationData fromstation tostation trainid carid stations trains = do
-	if existsStation fromstation stations then return True else failureString "Error: Starting-Station-ID does not exist"
-	if existsStation tostation stations then return True else failureString "Error: Destination-Station-ID does not exist"
-	if fromstation /= tostation then return True else failureString "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
-	if existsTrain trainid trains then return True else failureString "Error: Train-ID does not exist"
-	if existsTrainCar trainid carid trains then return True else failureString "Error: Car-ID does not exist"
+	unless (existsStation fromstation stations) $ failureString "Error: Starting-Station-ID does not exist"
+	unless (existsStation tostation stations) $ failureString "Error: Destination-Station-ID does not exist"
+	unless (fromstation /= tostation) $ failureString "Error: Starting-Station-ID cannot be the same as Destination-Station-ID"
+	unless (existsTrain trainid trains) $ failureString "Error: Train-ID does not exist"
+	unless (existsTrainCar trainid carid trains) $ failureString "Error: Car-ID does not exist"
 
 
 isGroupReservation :: RItem -> Bool
@@ -1032,8 +1021,7 @@ getRUsedSeats (IndividualReservation _ _) = 1
 --checks whether the given reservation is active between the given stations
 isActiveBetween :: Failure StringException m => FromStation -> ToStation -> Stations -> RItem -> m Bool
 isActiveBetween fromstation tostation stations ritem = do
-	if fromstation /= tostation then return True
-		else failureString "Error: Starting-Station-ID is the same as Destination-Station-ID"
+	unless (fromstation /= tostation) $ failureString "Error: Starting-Station-ID is the same as Destination-Station-ID"
 	resstations <- getStationsBetween (getRFromStationId ritem) (getRToStationId ritem) stations --stations the reservation is active for
 	checkstations <- getStationsBetween fromstation tostation stations --stations inbetween the given bounds - this must be a subset
 	return $ isInfixOf checkstations resstations
