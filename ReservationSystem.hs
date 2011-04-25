@@ -1,4 +1,6 @@
---Fabian Ehrentraud, Bernhard Urban, 2011
+--Train Reservation Management Application
+--Fabian Ehrentraud, 2011
+--Reviewer: Bernhard Urban
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
