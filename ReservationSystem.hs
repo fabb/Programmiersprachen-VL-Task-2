@@ -615,8 +615,8 @@ freeSeat appdata trainid carid seatid fromstation tostation = do
 --Bool does not hold any information
 isReservationPossible :: Failure StringException m => ApplicationData -> RItem -> m Bool
 
-isReservationPossible appdata ritem =
-	if isGroupReservation ritem then do
+isReservationPossible appdata ritem
+	| isGroupReservation ritem = do
 		--freeSeats does also take account for minFreeSeats
 		freeseats <- freeSeats appdata (getRTrainId ritem) (getRCarId ritem) (getRFromStationId ritem) (getRToStationId ritem)
 		groupseats <- maybe
@@ -627,7 +627,7 @@ isReservationPossible appdata ritem =
 			then return True
 			else failureString "Fail: Could not issue Group Reservation - not enough free seats" --TODO discern finer
 
-	else if isIndividualReservation ritem then do
+	| isIndividualReservation ritem = do
 		seatid <- maybe
 			(error "Program Error: Could not get Seat-ID for Individual Reservation")
 			return $ getRSeatId ritem
@@ -645,7 +645,7 @@ isReservationPossible appdata ritem =
 			then return True
 			else failureString "Fail: Could not issue Individual Reservation - Train Car is already full, or Minimum free Seats for Train undercut" --TODO discern finer
 	
-	else error "Program Error: Unknown Reservation Type encountered"
+	| otherwise = error "Program Error: Unknown Reservation Type encountered"
 
 
 {---------- Access ApplicationData ----------}
@@ -689,14 +689,14 @@ getStationsBetween :: Failure StringException m => FromStation -> ToStation -> S
 getStationsBetween = takeRange
 
 
---gets the range from the given list where all items between and including the first occurrence of the "first" item and the first ocurrence of the "last" item are returned
---when the "first" item occurrs after the "last" item in the given list, the result is reversed in order to let the "first" item really appear first
+--gets the range from the given xs where all items between and including the firste occurrence of the "firste" item and the firste ocurrence of the "laste" item are returned
+--when the "firste" item occurrs after the "laste" item in the given xs, the result is reversed in order to let the "firste" item really appear firste
 takeRange :: (Failure StringException m, Eq a) => a -> a -> [a] -> m [a]
-takeRange first last list
-	| notElem first list || notElem last list = failureString "Error: Provided First and Last Elements not part of List"
-	| first == last = return [first]
-	| occurrsBefore first last list = return $ takeWhileInclusive (/=last) $ dropWhile (/=first) list
-	| not $ occurrsBefore first last list = return $ reverse $ takeWhileInclusive (/=first) $ dropWhile (/=last) list
+takeRange firste laste xs
+	| notElem firste xs || notElem laste xs = failureString "Error: Provided firste and laste Elements not part of xs"
+	| firste == laste = return [firste]
+	| occurrsBefore firste laste xs = return $ takeWhileInclusive (/=laste) $ dropWhile (/=firste) xs
+	| not $ occurrsBefore firste laste xs = return $ reverse $ takeWhileInclusive (/=firste) $ dropWhile (/=laste) xs
 
 --returns whether the first element occurrs before the second one in the given list
 --when the two elements are equal, return False
@@ -714,12 +714,10 @@ takeWhileInclusive p (x:xs)
 
 --maps the function f over all inbetween stations, returns Nothing when FromStation==ToStation
 mapStationsM :: Failure StringException m => (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> m [a]
-mapStationsM f fromstation tostation stations = sfe
-	where
-		sf = mapStations f fromstation tostation stations 
-		sfe = if fromstation == tostation
-			then failureString "Error: Starting-Station-ID same as Destination-Station-ID"
-			else sf
+mapStationsM f fromstation tostation stations
+	| fromstation == tostation = failureString "Error: Starting-Station-ID same as Destination-Station-ID"
+	| otherwise = mapStations f fromstation tostation stations 
+			
 
 --maps the function f over all inbetween stations
 mapStations :: Failure StringException m => (FromStation -> ToStation -> Stations -> a) -> FromStation -> ToStation -> Stations -> m [a]
@@ -735,9 +733,7 @@ stationTuples fromstation tostation stations = tuples
 
 --converts a list into a list with tuples of adjacent elements from the original list
 tuplifyNeighbors :: [a] -> [(a,a)]
-tuplifyNeighbors [] = []
-tuplifyNeighbors (x:[]) = []
-tuplifyNeighbors (x:y:xs) = (x,y) : tuplifyNeighbors (y:xs)
+tuplifyNeighbors x = zip x (tail x)
 
 
 existsStation :: StationId -> Stations -> Bool
