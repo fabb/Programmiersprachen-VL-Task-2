@@ -657,8 +657,7 @@ incIssuedReservations appdata = setIssuedReservations appdata $ 1 + getIssuedRes
 {---------- Access Stations ADT ----------}
 
 showStations :: Stations -> String
-showStations (x:[]) = show x
-showStations (x:xs) = show x ++ " - " ++ showStations (xs)
+showStations = intercalate " - " . map show
 
 --could also be dependent of Train if it does not stop in all Stations, not implemented for simplification reasons
 getStationsBetween :: Failure StringException m => FromStation -> ToStation -> Stations -> m [Station]
@@ -719,7 +718,7 @@ existsStation stationid stations = elem stationid stations
 {---------- Access Trains ADT ----------}
 
 showTrains :: Trains -> String
-showTrains = concatMap ((++"\n") . showTrain)
+showTrains = intercalate "\n" . map showTrain
 
 showTrain :: Train -> String
 showTrain train = "Train " ++ show (getTrainId train) ++ ": " ++ showCars (getCars train)
@@ -731,7 +730,7 @@ showCar :: Car -> String
 showCar car = "\n\tCar " ++ show (getCarId car) ++ ": " ++ showSeats (getSeats car)
 
 showSeats :: Seats -> String
-showSeats seats = "Seats: " ++ showSeat (head seats) ++ concatMap ((" - " ++) . showSeat) (tail seats)
+showSeats = ("Seats: " ++) . intercalate " - " . map showSeat
 
 showSeat :: Seat -> String
 showSeat = show . getSeatId
@@ -842,7 +841,7 @@ instance Show RItem where
 --convert a reservation list into a better readable String
 --TODO this could be its own data which its own instance Show, but that would also need a constructor
 showReservations :: [RItem] -> String
-showReservations = concatMap ((++"\n") . show)
+showReservations = intercalate "\n" . map show
 
 
 filterTrain :: TrainId -> [RItem] -> [RItem]
