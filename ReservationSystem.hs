@@ -940,7 +940,7 @@ newRIndividualReservation :: Failure StringException m => ReservationNumber -> (
 newRIndividualReservation resnum (fromstation, tostation, trainid, carid, seatid) stations trains = do
 	checkRReservationData fromstation tostation trainid carid stations trains
 	unless (existsTrainCarSeat trainid carid seatid trains) $ failureString "Error: Seat-ID does not exist"
-	return (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid))
+	return (newRIndividualReservationUnchecked resnum (fromstation, tostation, trainid, carid, seatid))
 
 --creates a new Individual Reservation
 --checks parameters for validity - except to ReservationNumber
@@ -948,7 +948,7 @@ newRGroupReservation :: Failure StringException m => ReservationNumber -> (FromS
 newRGroupReservation resnum (fromstation, tostation, trainid, carid, seatcount) stations trains = do
 	checkRReservationData fromstation tostation trainid carid stations trains
 	unless (seatcount > 1) $ failureString "Error: Seat-Count must be at least 2"
-	return (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount))
+	return (newRGroupReservationUnchecked resnum (fromstation, tostation, trainid, carid, seatcount))
 
 --checks parameters, which are common to group and individual reservations, for validity
 checkRReservationData :: Failure StringException m => FromStation -> ToStation -> TrainId -> CarId -> Stations -> Trains -> m ()
@@ -959,6 +959,13 @@ checkRReservationData fromstation tostation trainid carid stations trains = do
 	unless (existsTrain trainid trains) $ failureString "Error: Train-ID does not exist"
 	unless (existsTrainCar trainid carid trains) $ failureString "Error: Car-ID does not exist"
 
+--creates a new IndividualReservation without checking parameters
+newRIndividualReservationUnchecked :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatId) -> RItem
+newRIndividualReservationUnchecked resnum (fromstation, tostation, trainid, carid, seatid) = IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid)
+
+--creates a new GroupReservation without checking parameters
+newRGroupReservationUnchecked :: ReservationNumber -> (FromStation, ToStation, TrainId, CarId, SeatCount) -> RItem
+newRGroupReservationUnchecked resnum (fromstation, tostation, trainid, carid, seatcount) = GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount)
 
 isGroupReservation :: RItem -> Bool
 isGroupReservation (GroupReservation _ _) = True
@@ -1210,17 +1217,23 @@ xpReservations =
 	xpList $
 	xpAlt tag ps --doesn't this work easier? it's just a choice between xpIndividualReservation and xpGroupReservation
 	where
-	tag ( IndividualReservation _ _ ) = 0
-	tag ( GroupReservation _ _ ) = 1
+	-- tag ( IndividualReservation _ _ ) = 0
+	-- tag ( GroupReservation _ _ ) = 1
+	tag ritem
+		| isIndividualReservation ritem = 0
+		| isGroupReservation ritem = 1
 	ps = [ xpIndividualReservation
 		 , xpGroupReservation
 		 ]
 
 xpIndividualReservation :: PU RItem
 xpIndividualReservation = xpElem "individual_reservation" $
-		xpWrap ( \((resnum,from,to,train,car,seat)) -> IndividualReservation resnum (from, to, train, car, seat)
-		       , \ir@(IndividualReservation resnum (from, to, train, car, seat)) -> (resnum,from,to,train,car,seat)
+		xpWrap ( \((resnum,from,to,train,car,seat)) -> newRIndividualReservationUnchecked resnum (from, to, train, car, seat)
+		       , \ritem -> (getRReservationNumber ritem, getRFromStationId ritem, getRToStationId ritem, getRTrainId ritem, getRCarId ritem, fromJust $ getRSeatId ritem)
 		       ) $
+		-- xpWrap ( \((resnum,from,to,train,car,seat)) -> IndividualReservation resnum (from, to, train, car, seat)
+		--        , \ir@(IndividualReservation resnum (from, to, train, car, seat)) -> (resnum,from,to,train,car,seat)
+		--        ) $
 		xp6Tuple (xpElem "reservation_number" xpPrim)
 				(xpElem "from" xpPrim)
 				(xpElem "to" xpPrim)
@@ -1230,9 +1243,12 @@ xpIndividualReservation = xpElem "individual_reservation" $
 
 xpGroupReservation :: PU RItem
 xpGroupReservation = xpElem "group_reservation" $
-		xpWrap ( \((resnum,from,to,train,car,count)) -> GroupReservation resnum (from, to, train, car, count)
-		       , \ir@(GroupReservation resnum (from, to, train, car, count)) -> (resnum,from,to,train,car,count)
+		xpWrap ( \((resnum,from,to,train,car,count)) -> newRGroupReservationUnchecked resnum (from, to, train, car, count)
+		       , \ritem -> (getRReservationNumber ritem, getRFromStationId ritem, getRToStationId ritem, getRTrainId ritem, getRCarId ritem, fromJust $ getRSeatCount ritem)
 		       ) $
+		-- xpWrap ( \((resnum,from,to,train,car,count)) -> GroupReservation resnum (from, to, train, car, count)
+		--        , \ir@(GroupReservation resnum (from, to, train, car, count)) -> (resnum,from,to,train,car,count)
+		--        ) $
 		xp6Tuple (xpElem "reservation_number" xpPrim)
 				(xpElem "from" xpPrim)
 				(xpElem "to" xpPrim)
