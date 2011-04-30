@@ -435,7 +435,7 @@ mainBack = putStrLn "Returning to Main Menu"
 --wait for user input to continue
 wait :: IO ()
 wait = do
-	putStr "\nPress any key to continue..."
+	putStrLn "\nPress any key to continue..."
 	getLine
 	return ()
 
