@@ -896,19 +896,24 @@ length' [] = 0
 
 instance Show RItem where
 	show (GroupReservation resnum (fromstation, tostation, trainid, carid, seatcount)) =
-		"Group Reservation - Reservation Number " ++ show resnum ++
-		" - " ++ show seatcount ++ " Persons" ++
-		" - from Station " ++ show fromstation ++ " to " ++ show tostation ++
-		" - in Train " ++ show trainid ++ ", Car " ++ show carid
+		"Group Reservation      - Reservation Number " ++ zeroPrepend 4 (show resnum) ++
+		" - " ++ zeroPrepend 2 (show seatcount) ++ " Persons" ++
+		" - from Station " ++ zeroPrepend 2 (show fromstation) ++ " to " ++ zeroPrepend 2 (show tostation) ++
+		" - in Train " ++ zeroPrepend 2 (show trainid) ++ ", Car " ++ zeroPrepend 2 (show carid)
 	show (IndividualReservation resnum (fromstation, tostation, trainid, carid, seatid)) =
-		"Individual Reservation - Reservation Number " ++ show resnum ++
-		" - from Station " ++ show fromstation ++ " to " ++ show tostation ++
-		" - in Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
+		"Individual Reservation - Reservation Number " ++ zeroPrepend 4 (show resnum) ++
+		"              - from Station " ++ zeroPrepend 2 (show fromstation) ++ " to " ++ zeroPrepend 2 (show tostation) ++
+		" - in Train " ++ zeroPrepend 2 (show trainid) ++ ", Car " ++ zeroPrepend 2 (show carid) ++ ", Seat " ++ zeroPrepend 2 (show seatid)
 
 --convert a reservation list into a better readable String
 --TODO this could be its own data which its own instance Show, but that would also need a constructor
 showReservations :: [RItem] -> String
 showReservations = intercalate "\n" . map show
+
+
+-- prepends the given string with '0's that it gets as long as the given Int
+zeroPrepend :: Int -> String -> String
+zeroPrepend digits s = replicate (digits - length s) '0' ++ s
 
 
 filterTrain :: TrainId -> [RItem] -> [RItem]
