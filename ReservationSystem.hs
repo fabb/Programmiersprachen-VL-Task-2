@@ -149,7 +149,9 @@ mainloop appData = do
 					
 			"y" -> mDeleteReservation appData
 		
-			"r" -> mShowTrains appData >> return appData
+			"t" -> mShowTrains appData >> return appData
+			
+			"r" -> mShowAllTrainReservations appData >> return appData
 					
 			"d" -> mShowGroupReservations appData >> return appData
 					
@@ -186,7 +188,8 @@ printMenu = putStrLn "\nYour Options:\n\
                      \ (a) New individual reservation\n\
                      \ (s) New group reservation\n\
                      \ (y) Delete reservation\n\
-                     \ (r) Show train stations, trains, train cars, and seats\n\
+                     \ (t) Show train stations, trains, train cars, and seats\n\
+                     \ (r) Show all train reservations\n\
                      \ (d) Show group reservations\n\
                      \ (f) Show free seat count\n\
                      \ (g) Show individual reservations\n\
@@ -319,6 +322,38 @@ mShowTrains appdata = do
 	putStrLn ""
 	putStrLn $ "Trains:"	
 	putStrLn $ showTrains $ getTrains appdata --TODO if Train was a data type, it could have a nice instance Show
+	
+	wait
+
+--Show group reservations
+--needs as input TRAIN
+mShowAllTrainReservations :: ApplicationData -> IO ()
+mShowAllTrainReservations appdata = do
+	putStrLn $ "Show All Train Reservations\n"
+
+	putStrLn $ "Please input Train-ID"
+	
+	l <- getLine
+	
+	putStrLn ""
+	
+	case tokenizeWS l of
+		[trainid] -> do
+			case (maybeReadTWS trainid :: Maybe TrainId) of
+				(Just trainid) -> do
+			
+					case trainReservations appdata trainid of
+						Left (StringException error) -> putStrLn error
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right trainreservations -> if isREmpty trainreservations
+							then putStrLn $ "NO reservations exist for Train " ++ show trainid
+							else do
+								putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ":"
+								putStrLn $ showReservations trainreservations
+
+				e -> wrongTypes e
+			
+		e -> wrongArgumentCount e
 	
 	wait
 
@@ -540,6 +575,15 @@ deleteReservation appdata reservationnumber = do
 	case changedZipper of
 		Nothing -> failureString "Error: No such Reservation found"
 		Just x -> return $ setReservationZipper appdata x
+
+--calculates all train reservations for given Train
+trainReservations :: Failure StringException m => ApplicationData -> TrainId -> m [RItem]
+trainReservations appdata trainid = do
+	let
+		trains = getTrains appdata
+		res = unpackRZipper $ getReservationZipper appdata
+	unless (existsTrain trainid trains) $ failureString "Error: No such Train-ID"
+	return $ filterTrain trainid res
 
 --calculates group reservations for given Train Car
 groupReservations :: Failure StringException m => ApplicationData -> TrainId -> CarId -> m [RItem]
