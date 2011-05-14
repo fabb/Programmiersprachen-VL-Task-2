@@ -392,13 +392,27 @@ mShowFreeSeats :: ApplicationData -> IO ()
 mShowFreeSeats appdata = do
 	putStrLn $ "Show Free Seat Count\n"
 
-	putStrLn $ "Please input Train-ID, Car-ID, Starting-Station-ID and Destination-Station-ID separated by spaces"
+	putStrLn $ "To display the Free Seat Count for a whole Train, please input Train-ID, Starting-Station-ID and Destination-Station-ID separated by spaces\n"
+	putStrLn $ "To display the Free Seat Count for a specific Train Car, please input Train-ID, Car-ID, Starting-Station-ID and Destination-Station-ID separated by spaces\n"
 	
 	l <- getLine
 	
 	putStrLn ""
 	
 	case tokenizeWS l of
+		[trainid, startstation, endstation] -> do
+			case (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId) of
+				(Just trainid, Just startstation, Just endstation) -> do
+			
+					case freeSeatsT appdata trainid startstation endstation of
+						Left (StringException error) -> putStrLn error
+							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
+						Right seats -> do
+							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
+							putStrLn $ show seats
+
+				e -> wrongTypes e
+			
 		[trainid, carid, startstation, endstation] -> do
 			case (maybeReadTWS trainid :: Maybe TrainId, maybeReadTWS carid :: Maybe CarId, maybeReadTWS startstation :: Maybe StationId, maybeReadTWS endstation :: Maybe StationId) of
 				(Just trainid, Just carid, Just startstation, Just endstation) -> do
@@ -558,9 +572,18 @@ freeSeats appdata trainid carid startstation endstation = do
 	carfree <- freeSeatsCar appdata trainid carid startstation endstation
 	return $ min carfree (trainfree - minfree)
 
+--calculates minimum free seat count in given Train between given Stations
+--if the train is so full as a whole (minimum free seats per train) that it's free seats , that value will be displayed instead
+freeSeatsT :: Failure StringException m => ApplicationData -> TrainId -> FromStation -> ToStation -> m SeatCount
+freeSeatsT appdata trainid startstation endstation = do
+	minfree <- return (getTrains appdata) >>= getTrain trainid >>= return . minFreeTrainSeats
+	--trainseatcount <- return (getTrains appdata) >>= getSeatCountTrainId trainid	
+	trainfree <- freeSeatsTrain appdata trainid startstation endstation
+	return $ trainfree - minfree
+
 
 --returns the number of free seats for the given Train between the provided stations
-freeSeatsTrain :: Failure StringException m => ApplicationData -> TrainId -> FromStation -> ToStation -> m Integer
+freeSeatsTrain :: Failure StringException m => ApplicationData -> TrainId -> FromStation -> ToStation -> m SeatCount
 freeSeatsTrain appdata trainid fromstation tostation = do
 	let
 		stations = getStations appdata
@@ -571,7 +594,7 @@ freeSeatsTrain appdata trainid fromstation tostation = do
 	return $ wholeseats - used
 
 --returns the number of free seats for the given Train Car between the provided stations
-freeSeatsCar :: Failure StringException m => ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> m Integer
+freeSeatsCar :: Failure StringException m => ApplicationData -> TrainId -> CarId -> FromStation -> ToStation -> m SeatCount
 freeSeatsCar appdata trainid carid fromstation tostation = do
 	let
 		stations = getStations appdata
@@ -582,7 +605,7 @@ freeSeatsCar appdata trainid carid fromstation tostation = do
 	return $ wholeseats - used
 
 --returns the number of free seats for the given Seat between the provided stations (1 or 0)
-freeSeat :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> FromStation -> ToStation -> m Integer
+freeSeat :: Failure StringException m => ApplicationData -> TrainId -> CarId -> SeatId -> FromStation -> ToStation -> m SeatCount
 freeSeat appdata trainid carid seatid fromstation tostation = do
 	let
 		stations = getStations appdata
