@@ -230,7 +230,7 @@ mNewIndividualReservation appdata = do
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right (newAppdata, resnum) -> do
-							putStrLn $ "Successfully added new Individual Reservation from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
+							putStrLn $ "Successfully added new Individual Reservation from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ "\n"
 							putStrLn $ "Reservation Number: " ++ show resnum
 							return newAppdata
 
@@ -265,7 +265,7 @@ mNewGroupReservation appdata = do
 							return appdata
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right (newAppdata, resnum) -> do
-							putStrLn $ "Successfully added new Group Reservation for " ++ show seatcount ++ " Persons from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid
+							putStrLn $ "Successfully added new Group Reservation for " ++ show seatcount ++ " Persons from Station " ++ show startstation ++ " to Station " ++ show endstation ++ " for Train " ++ show trainid ++ ", Car " ++ show carid ++ "\n"
 							putStrLn $ "Reservation Number: " ++ show resnum
 							return newAppdata
 
@@ -348,7 +348,7 @@ mShowAllTrainReservations appdata = do
 						Right trainreservations -> if isREmpty trainreservations
 							then putStrLn $ "NO reservations exist for Train " ++ show trainid
 							else do
-								putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ":"
+								putStrLn $ "The following reservations exist for Train " ++ show trainid ++ ":\n"
 								putStrLn $ showReservations trainreservations
 
 				e -> wrongTypes e
@@ -380,7 +380,7 @@ mShowGroupReservations appdata = do
 						Right groupreservations -> if isREmpty groupreservations
 							then putStrLn $ "NO group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid
 							else do
-								putStrLn $ "The following group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ":"
+								putStrLn $ "The following group reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ":\n"
 								putStrLn $ showReservations groupreservations
 
 				e -> wrongTypes e
@@ -412,7 +412,7 @@ mShowIndividualReservations appdata = do
 						Right individualreservations -> if isREmpty individualreservations
 							then putStrLn $ "NO individual reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid
 							else do
-								putStrLn $ "The following individual reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":"
+								putStrLn $ "The following individual reservations exist for Train " ++ show trainid ++ ", Car " ++ show carid ++ ", Seat " ++ show seatid ++ ":\n"
 								putStrLn $ showReservations individualreservations
 
 				e -> wrongTypes e
@@ -443,7 +443,7 @@ mShowFreeSeats appdata = do
 						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right seats -> do
-							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
+							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":\n"
 							putStrLn $ show seats
 
 				e -> wrongTypes e
@@ -456,7 +456,7 @@ mShowFreeSeats appdata = do
 						Left (StringException error) -> putStrLn error
 							--TODO instead of returning to main menu ask for parameters again? but then some breakout must be possible when just wanting back
 						Right seats -> do
-							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":"
+							putStrLn $ "The following count of free seats are available at minimum for Train " ++ show trainid ++ ", Car " ++ show carid ++ " between the Stations " ++ show startstation ++ " and " ++ show endstation ++ ":\n"
 							putStrLn $ show seats
 
 				e -> wrongTypes e
